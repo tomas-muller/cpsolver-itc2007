@@ -1,0 +1,1 @@
+Input problem instances of Track1: Examination Timetabling (EXAM) downloaded from http://www.cs.qub.ac.uk/itc2007/postenrolcourse/course_post_index_files/instances.htm

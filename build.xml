@@ -1,0 +1,175 @@
+<project name="itc" default="dist" basedir=".">
+	<!--
+		ITC2007
+		Copyright (C) 2007 Tomas Muller
+		muller@unitime.org
+		Lazenska 391, 76314 Zlin, Czech Republic
+		
+		This library is free software; you can redistribute it and/or
+		modify it under the terms of the GNU Lesser General Public
+		License as published by the Free Software Foundation; either
+		version 2.1 of the License, or (at your option) any later version.
+
+		This library is distributed in the hope that it will be useful,
+		but WITHOUT ANY WARRANTY; without even the implied warranty of
+		MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+		Lesser General Public License for more details.
+
+		You should have received a copy of the GNU Lesser General Public
+		License along with this library; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+	-->
+    <property name="build.dir" value="tmp"/>
+    <property name="dist.dir" value="dist"/>
+    <property name="dist-lib.dir" value="${dist.dir}/bin"/>
+	<property name="lib.dir" location="lib"/>
+    <property name="src.dir" location="src"/>
+    
+    <target name="clean">
+        <delete dir="${build.dir}" failonerror="false"/>
+    </target>
+    
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${dist-lib.dir}"/>
+        <echo message="Source files: ${src.dir}"/>
+        <echo message="Libs: ${lib.dir}"/>
+    </target>
+    
+    <target name="prepare" depends="init">
+        <buildnumber/>
+        <echo message="Build number: ${build.number}"/>
+        <tstamp>
+            <format property="build.date" pattern="EEE, d MMM yyyy" locale="en"/>
+        </tstamp>
+        <echo message="Build date: ${build.date}"/>
+        <propertyfile file="build.date" comment="Build info">
+            <entry  key="build.date" value="${build.date}"/>
+        	<entry  key="build.number" value="${build.number}"/>
+        </propertyfile>
+        <path id="build.classpath">
+            <fileset dir="${lib.dir}">
+            	<include name="*.jar"/>
+            </fileset>
+        </path>
+    </target>
+
+    <target name="compile-java" depends="prepare">
+        <javac debug="true" destdir="${build.dir}">
+            <src path="${src.dir}"/>
+            <classpath refid="build.classpath"/>
+        </javac>
+    </target>
+    
+    <target name="compile-java-rel" depends="prepare">
+        <javac debug="false" optimize="true" destdir="${build.dir}">
+            <src path="${src.dir}"/>
+            <classpath refid="build.classpath"/>
+        </javac>
+    </target>
+
+    <target name="compile-jar">
+        <jar destfile="${dist-lib.dir}/itc2007.jar">
+            <fileset dir="${build.dir}">
+                <include name="net/sf/cpsolver/itc/**/*.class"/>
+            </fileset>
+            <fileset dir="${src.dir}">
+	        	<include name="**/*.properties"/>
+            </fileset>
+        	<manifest>
+        		<attribute name="Class-Path" value="log4j-1.2.8.jar dom4j-1.6.1.jar cpsolver-all-1.1.jar" /> 
+        		<attribute name="Itc-Version" value="1.0_bld${build.number}"/>
+        		<attribute name="Main-Class" value="net.sf.cpsolver.itc.ItcTest"/>
+        	</manifest>
+        </jar>
+    </target>
+
+    <target name="copy-libs" depends="init">
+        <copy todir="${dist-lib.dir}" overwrite="Yes" preservelastmodified="Yes">
+            <fileset dir="${lib.dir}" includes="*.jar" />
+        	<fileset file="${cpsolver.jar}"/>
+      </copy>
+    </target>
+	
+	<target name="doc">
+        <delete dir="${dist.dir}/doc" failonerror="false"/>
+        <mkdir dir="${dist.dir}/doc"/>
+    	<javadoc destdir="${dist.dir}/doc" author="true" version="true" use="true" windowtitle="ITC2007 API Documentation -- ITC2007 v1.0 build ${build.number}" linksource="true" breakiterator="true">
+    		<doctitle><![CDATA[
+    		<table border='0' style='font-size: 11pt;font-weight: normal;'><tr><td align='left'>
+    		ITC2007<br>
+    		Copyright (C) 2007 Tomas Muller<br>
+    		<a href='mailto:muller@unitime.org'>muller@unitime.org</a><br>
+    		Lazenska 391, 76314 Zlin, Czech Republic<br>
+    		<br>
+    		This library is free software; you can redistribute it and/or
+    		modify it under the terms of the GNU Lesser General Public
+    		License as published by the Free Software Foundation; either
+    		version 2.1 of the License, or (at your option) any later version.
+    		<br><br>
+    		This library is distributed in the hope that it will be useful,
+    		but WITHOUT ANY WARRANTY; without even the implied warranty of
+    		MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    		Lesser General Public License for more details.
+    		<br><br>
+    		You should have received a copy of the GNU Lesser General Public
+    		License along with this library; if not, write to the Free Software
+    		Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+    		</td></tr></table>
+   			]]></doctitle>
+ 	   	<group title="International Timetabling Competition 2007" packages="net.sf.cpsolver.itc*"/>
+ 	   	<link href="http://java.sun.com/j2se/1.5.0/docs/api/"/>
+ 	   	<link href="http://logging.apache.org/log4j/docs/api/"/>
+ 	   	<fileset dir="src" includes="**/*.java"/>
+    	<packageset dir="src" includes="**/package.html"/>
+ 	   	<classpath>
+ 	   		<fileset dir="${lib.dir}">
+ 	   			<include name="**/*.jar"/>
+ 	   		</fileset>
+ 	   	</classpath>
+    	</javadoc>
+    	<replace dir="${dist.dir}/doc">
+    		<include name="**/*.html"/>
+    		<replacetoken>Tomas Muller</replacetoken>
+    		<replacevalue><![CDATA[Tom&#225;&#353; M&#252;ller]]></replacevalue>
+		</replace>		
+	</target>
+	
+	<target name="src">
+		<delete dir="${dist.dir}/src.zip" failonerror="false"/>
+		<zip destfile="${dist.dir}/src.zip">
+			<fileset dir="${src.dir}">
+				<include name="**/*.properties"/>
+				<include name="**/*.java"/>
+			</fileset>
+		</zip>
+	</target>
+	
+	<target name="zip">
+		<zip destfile="${dist.dir}/itc2007_bld${build.number}.zip">
+			<zipfileset dir="${lib.dir}" includes="*.jar" prefix="bin"/>
+			<zipfileset dir="${dist.dir}/bin" includes="itc2007.jar" prefix="bin"/>
+			<zipfileset dir="${src.dir}" prefix="src">
+				<include name="**/*.properties"/>
+				<include name="**/*.java"/>
+			</zipfileset>
+			<zipfileset dir="${dist.dir}/doc" includes="**/*" prefix="doc"/>
+        	<zipfileset dir="." includes="lgpl.txt" fullpath="license.txt"/>
+			<zipfileset dir="doc" includes="readme.txt"/>
+			<zipfileset dir="doc" includes="itc2007.pdf"/>
+			<zipfileset dir="data/ctt" includes="*.ctt" prefix="data"/>
+			<zipfileset dir="data/exam" includes="*.exam" prefix="data"/>
+			<zipfileset dir="data/tim" includes="*.tim" prefix="data"/>
+		</zip>
+	</target>
+
+    <target name="done">
+        <delete dir="${build.dir}" failonerror="false"/>
+        <delete file="build.date"/>
+    </target>
+    
+    <target name="build-debug" depends="clean,prepare,compile-java,compile-jar,done"/>
+    <target name="build" depends="clean,prepare,compile-java-rel,compile-jar,done"/>
+    <target name="dist-debug" depends="clean,prepare,compile-java,compile-jar,copy-libs,doc,src,zip,done"/>
+    <target name="dist" depends="clean,prepare,compile-java-rel,compile-jar,copy-libs,doc,src,zip,done"/>
+</project>

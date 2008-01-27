@@ -1,0 +1,1 @@
+Input problem instances of International Timetabling Competition 2002 downloaded from http://www.idsia.ch/Files/ttcomp2002/IC_Problem/node3.html

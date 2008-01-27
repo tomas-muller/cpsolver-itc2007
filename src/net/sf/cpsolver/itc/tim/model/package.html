@@ -1,0 +1,35 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+<head><title>net.sf.cpsolver.itc.tim.model package</title></head>
+<body bgcolor="white">
+Track 2 (Post Enrollment based Course Timetabling): Problem Model. 
+<br><br>
+<h1>The Problem Model</h1>
+<p>The timetabling problem that we will be using here is an extension of the model used in the first International Timetabling Competition, which was run in 2003 in conjunction with PATAT and the Metaheuristics Network. </p>
+<p>One feature of the first competition was that the hard constraints of the problem instances that were used were quite easy to satisfy. In fact, we chose to disqualify those algorithms that could not satisfy the hard constraints, and measured solution quality by only looking at the number of soft constraint violations. </p>
+<p>This&nbsp; meant that the majority of ideas generated in the first competition were to do with the satisfaction of the soft constraints. In many real-world timetabling problems, it may not actually be so easy to satisfy all of the hard constraints. Therefore, in this new competition, we have chosen to use problem instances where this task is not so straightforward. </p>
+
+<p>In addition to this, in the first competition we only imposed three hard constraints in our problem model (see (1), (2), and (3) below). In this competition, however, we have also chosen to impose two new hard constraints (numbers (4) and (5) below). These constraints are also fairly common in practical university timetabling and are intended to add further realism to the model. </p>
+<h2>Description </h2>
+<p>The problem consists of the following: a set of events that are to be scheduled into 45 timeslots (5 days of 9 hours each); a set of rooms in which events take place; a set of students who attend the events; and a set of features satisfied by rooms and required by events. Each student attends a number of events and each room has a size. </p>
+<p>In addition to this, some events can only be assigned to certain timeslots. Also, some events will be required to occur before other events in the timetable. </p>
+<p>A feasible timetable is therefore one in where events have been assigned a timeslot and a room so that the following hard constraints are satisfied: </p>
+<ol>
+  <li> no student attends more than one event at the same time; </li>
+  <li> the room is big enough for all the attending students and satisfies all the features required by the event; </li>
+
+  <li>only one event is put into each room in any timeslot; </li>
+  <li> events are only assigned to timeslots that are pre-defined as available for those events; </li>
+  <li>where specified,&nbsp; events are scheduled to occur in the correct order in the week </li>
+</ol>
+<p>You may not always be able to schedule all of the events into the timetable in the given time without breaking some of the hard constraints. It will therefore be necessary for entrants to not place some events in the timetable (or remove them later) in order to ensure that no hard constraints are being violated. These events will then be considered unplaced. </p>
+<p>In addition, a candidate timetable is penalised equally for each occurrence of the following soft constraint violations: </p>
+
+<ul>
+  <li>a student has a class in the last slot of the day; </li>
+  <li>a student has more than two classes consecutively; </li>
+  <li>a student has a single class on a day. </li>
+</ul><p><br/>
+See <a href='http://www.cs.qub.ac.uk/itc2007/postenrolcourse/course_post_index.htm'>http://www.cs.qub.ac.uk/itc2007/postenrolcourse/course_post_index.htm</a> for more information about this track.
+</body>
+</html>
