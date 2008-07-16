@@ -1,0 +1,719 @@
+Name: Let0304-1
+Courses: 47
+Rooms: 9
+Days: 6
+Periods_per_day: 6
+Curricula: 52
+Constraints: 594
+
+COURSES:
+LET-STO-StoMed2 t000 3 3 10 
+LET-STO-StoMed1 t001 3 3 140 
+LET-ITA-LinIta t002 3 3 60 
+LET-ITA-LetIta2 t003 3 3 90 
+LET-ITA-EleLinGenFil t004 3 3 80 
+LET-GEO-StoCriCin t005 3 3 10 
+LET-GEO-Geo2 t006 3 3 30 
+LET-GEO-Geo1 t007 3 3 80 
+LET-FIL-StoSci t008 3 3 40 
+LET-FIL-Est t009 3 3 50 
+LET-CST-StoRom t010 3 3 60 
+LET-CST-StoGre t011 3 3 40 
+LET-CST-EpiLat t012 3 3 20 
+LET-CLE-LinLetGre2 t013 3 3 10 
+LET-CLE-LinLat t014 2 2 80 
+LET-CLE-LinGre t015 2 2 40 
+LET-CLE-Glo t016 3 3 40 
+LET-CLE-FilCla t017 3 3 20 
+CBC-LIB-StoLibSta t018 3 3 40 
+CBC-LIB-StoBib t019 3 3 40 
+CBC-LIB-PalLat t020 3 3 60 
+CBC-LIB-InfDoc t021 3 3 50 
+CBC-LIB-Cod t022 3 3 50 
+CBC-LIB-ArcSpe t023 3 3 30 
+CBC-LIB-Arc t024 3 3 30 
+CBC-ART-StoTecFot t025 3 3 20 
+CBC-ART-StoTecArt t026 3 3 10 
+CBC-ART-StoRes t027 3 3 20 
+CBC-ART-StoProArtCulMatMed t028 3 3 10 
+CBC-ART-StoMus t029 3 3 40 
+CBC-ART-StoDisGra t030 3 3 10 
+CBC-ART-StoCriCin t031 3 3 20 
+CBC-ART-StoCriArt t032 3 3 20 
+CBC-ART-StoArcMed t033 3 3 10 
+CBC-ART-StoArcCon t034 3 3 60 
+CBC-ART-SocArt t035 3 3 30 
+CBC-ART-MatCarCosResEdiSto t036 3 3 60 
+CBC-ART-EleInfSciCatBenCul t037 3 3 20 
+CBC-ART-ArcStoArtMusA t038 3 3 20 
+CBC-ARC-TopRilMonAnt t039 3 3 40 
+CBC-ARC-Palantro t040 3 3 10 
+CBC-ARC-MatTecAppArc t041 3 3 40 
+CBC-ARC-LinLat t042 2 2 50 
+CBC-ARC-Geo1 t043 3 3 50 
+CBC-ARC-EtrAntIta t044 3 3 20 
+CBC-ARC-ArcCriMed t045 3 3 20 
+CBC-ARC-ArcCla2 t046 3 3 10 
+
+ROOMS:
+r1 150 
+r10 130 
+rC1 28 
+rC2 20 
+rL 65 
+rM 60 
+rN 40 
+rO 30 
+rVL 20 
+
+CURRICULA:
+q000 4 LET-ITA-EleLinGenFil LET-CLE-LinLat LET-STO-StoMed1 LET-GEO-Geo1 
+q001 3 LET-ITA-LinIta LET-ITA-LetIta2 CBC-LIB-Arc 
+q002 3 LET-ITA-LinIta LET-ITA-LetIta2 CBC-LIB-Cod 
+q003 3 LET-ITA-LinIta LET-ITA-LetIta2 CBC-LIB-PalLat 
+q004 3 LET-ITA-LinIta LET-ITA-LetIta2 CBC-LIB-StoLibSta 
+q005 2 CBC-ART-StoMus LET-FIL-Est 
+q006 4 LET-ITA-EleLinGenFil LET-GEO-Geo1 LET-CLE-LinGre LET-CLE-LinLat 
+q007 3 LET-CLE-Glo LET-ITA-LetIta2 LET-CST-StoGre 
+q008 3 LET-CLE-FilCla LET-CLE-LinLetGre2 LET-CST-StoRom 
+q010 3 LET-ITA-LetIta2 LET-CST-StoGre LET-CST-StoRom 
+q011 3 LET-CST-EpiLat LET-CLE-FilCla CBC-ARC-TopRilMonAnt 
+q012 3 LET-CST-EpiLat LET-CLE-Glo CBC-ARC-TopRilMonAnt 
+q014 2 LET-GEO-Geo2 LET-ITA-LetIta2 
+q015 4 LET-GEO-Geo2 LET-ITA-LinIta LET-FIL-StoSci CBC-ART-StoMus 
+q016 4 LET-GEO-Geo2 LET-ITA-LinIta LET-FIL-StoSci LET-GEO-StoCriCin 
+q018 3 CBC-LIB-Arc LET-ITA-LetIta2 CBC-LIB-PalLat 
+q019 3 LET-FIL-StoSci LET-STO-StoMed2 LET-CST-StoRom 
+q020 4 LET-ITA-EleLinGenFil LET-GEO-Geo1 LET-CLE-LinLat LET-CST-StoGre 
+q022 4 LET-ITA-EleLinGenFil LET-GEO-Geo1 LET-CLE-LinLat LET-CST-StoRom 
+q023 3 LET-ITA-LetIta2 LET-FIL-StoSci LET-STO-StoMed1 
+q024 2 CBC-ARC-ArcCriMed LET-FIL-Est 
+q025 4 CBC-ARC-Geo1 CBC-ARC-LinLat LET-STO-StoMed1 CBC-ART-ArcStoArtMusA 
+q026 4 CBC-ARC-Geo1 CBC-ARC-LinLat LET-STO-StoMed1 CBC-ART-StoProArtCulMatMed 
+q027 4 CBC-ARC-Geo1 CBC-ARC-LinLat LET-STO-StoMed1 CBC-ART-StoArcMed 
+q028 4 CBC-ART-EleInfSciCatBenCul CBC-ART-StoRes CBC-ART-StoCriArt CBC-ART-ArcStoArtMusA 
+q029 4 CBC-ART-EleInfSciCatBenCul CBC-ART-StoRes CBC-ART-StoCriArt CBC-ART-StoDisGra 
+q030 4 CBC-ART-MatCarCosResEdiSto CBC-ART-StoMus LET-FIL-Est CBC-ART-StoArcCon 
+q031 4 CBC-ART-MatCarCosResEdiSto CBC-ART-StoMus CBC-ART-SocArt CBC-ART-StoArcCon 
+q032 4 CBC-ART-MatCarCosResEdiSto CBC-ART-StoCriCin LET-FIL-Est CBC-ART-StoArcCon 
+q033 4 CBC-ART-MatCarCosResEdiSto CBC-ART-StoCriCin CBC-ART-SocArt CBC-ART-StoArcCon 
+q034 4 CBC-ART-MatCarCosResEdiSto CBC-ART-StoTecFot LET-FIL-Est CBC-ART-StoArcCon 
+q035 4 CBC-ART-MatCarCosResEdiSto CBC-ART-StoTecFot CBC-ART-SocArt CBC-ART-StoArcCon 
+q036 4 LET-CST-StoGre CBC-ARC-Geo1 CBC-ARC-LinLat CBC-ARC-Palantro 
+q037 4 LET-CST-StoRom CBC-ARC-TopRilMonAnt LET-CLE-LinGre CBC-ARC-ArcCla2 
+q038 4 LET-CST-StoRom CBC-ARC-TopRilMonAnt LET-CLE-LinGre CBC-ARC-ArcCriMed 
+q039 3 CBC-ARC-MatTecAppArc CBC-ARC-EtrAntIta LET-CLE-Glo 
+q040 3 CBC-ARC-MatTecAppArc CBC-ARC-EtrAntIta CBC-LIB-InfDoc 
+q041 3 CBC-ARC-MatTecAppArc LET-STO-StoMed1 LET-CLE-Glo 
+q042 3 CBC-ARC-MatTecAppArc LET-STO-StoMed1 CBC-LIB-InfDoc 
+q043 4 CBC-LIB-Arc CBC-ARC-Geo1 CBC-ARC-LinLat LET-STO-StoMed1 
+q044 3 CBC-LIB-PalLat CBC-LIB-ArcSpe CBC-ART-StoTecArt 
+q045 2 CBC-LIB-PalLat CBC-LIB-InfDoc 
+q046 2 CBC-LIB-PalLat CBC-LIB-StoLibSta 
+q047 2 CBC-LIB-PalLat LET-STO-StoMed1 
+q048 2 CBC-LIB-ArcSpe CBC-LIB-Cod 
+q049 2 CBC-LIB-ArcSpe CBC-LIB-StoBib 
+q050 2 CBC-LIB-InfDoc CBC-LIB-Cod 
+q051 2 CBC-LIB-InfDoc CBC-LIB-StoBib 
+q052 2 CBC-LIB-StoLibSta CBC-LIB-Cod 
+q053 2 CBC-LIB-StoLibSta CBC-LIB-StoBib 
+q054 2 LET-STO-StoMed1 CBC-LIB-Cod 
+q055 2 LET-STO-StoMed1 CBC-LIB-StoBib 
+
+UNAVAILABILITY_CONSTRAINTS:
+LET-STO-StoMed2 0 5 
+LET-STO-StoMed2 1 5 
+LET-STO-StoMed2 4 5 
+LET-STO-StoMed2 5 2 
+LET-STO-StoMed2 5 3 
+LET-STO-StoMed2 5 4 
+LET-STO-StoMed2 5 5 
+LET-STO-StoMed1 0 5 
+LET-STO-StoMed1 1 5 
+LET-STO-StoMed1 4 5 
+LET-STO-StoMed1 5 2 
+LET-STO-StoMed1 5 3 
+LET-STO-StoMed1 5 4 
+LET-STO-StoMed1 5 5 
+LET-ITA-LinIta 0 5 
+LET-ITA-LinIta 1 5 
+LET-ITA-LinIta 4 5 
+LET-ITA-LinIta 5 2 
+LET-ITA-LinIta 5 3 
+LET-ITA-LinIta 5 4 
+LET-ITA-LinIta 5 5 
+LET-ITA-LetIta2 0 5 
+LET-ITA-LetIta2 1 5 
+LET-ITA-LetIta2 4 5 
+LET-ITA-LetIta2 5 2 
+LET-ITA-LetIta2 5 3 
+LET-ITA-LetIta2 5 4 
+LET-ITA-LetIta2 5 5 
+LET-ITA-EleLinGenFil 0 0 
+LET-ITA-EleLinGenFil 0 1 
+LET-ITA-EleLinGenFil 0 2 
+LET-ITA-EleLinGenFil 0 5 
+LET-ITA-EleLinGenFil 1 5 
+LET-ITA-EleLinGenFil 2 3 
+LET-ITA-EleLinGenFil 2 4 
+LET-ITA-EleLinGenFil 2 5 
+LET-ITA-EleLinGenFil 3 0 
+LET-ITA-EleLinGenFil 3 1 
+LET-ITA-EleLinGenFil 3 2 
+LET-ITA-EleLinGenFil 3 3 
+LET-ITA-EleLinGenFil 3 4 
+LET-ITA-EleLinGenFil 3 5 
+LET-ITA-EleLinGenFil 4 0 
+LET-ITA-EleLinGenFil 4 1 
+LET-ITA-EleLinGenFil 4 2 
+LET-ITA-EleLinGenFil 4 3 
+LET-ITA-EleLinGenFil 4 4 
+LET-ITA-EleLinGenFil 4 5 
+LET-ITA-EleLinGenFil 5 0 
+LET-ITA-EleLinGenFil 5 1 
+LET-ITA-EleLinGenFil 5 2 
+LET-ITA-EleLinGenFil 5 3 
+LET-ITA-EleLinGenFil 5 4 
+LET-ITA-EleLinGenFil 5 5 
+LET-GEO-StoCriCin 0 0 
+LET-GEO-StoCriCin 0 1 
+LET-GEO-StoCriCin 0 2 
+LET-GEO-StoCriCin 0 3 
+LET-GEO-StoCriCin 0 4 
+LET-GEO-StoCriCin 0 5 
+LET-GEO-StoCriCin 1 0 
+LET-GEO-StoCriCin 1 1 
+LET-GEO-StoCriCin 1 2 
+LET-GEO-StoCriCin 1 3 
+LET-GEO-StoCriCin 1 4 
+LET-GEO-StoCriCin 1 5 
+LET-GEO-StoCriCin 2 0 
+LET-GEO-StoCriCin 2 1 
+LET-GEO-StoCriCin 2 2 
+LET-GEO-StoCriCin 4 3 
+LET-GEO-StoCriCin 4 4 
+LET-GEO-StoCriCin 4 5 
+LET-GEO-StoCriCin 5 0 
+LET-GEO-StoCriCin 5 1 
+LET-GEO-StoCriCin 5 2 
+LET-GEO-StoCriCin 5 3 
+LET-GEO-StoCriCin 5 4 
+LET-GEO-StoCriCin 5 5 
+LET-GEO-Geo2 0 5 
+LET-GEO-Geo2 1 5 
+LET-GEO-Geo2 4 5 
+LET-GEO-Geo2 5 2 
+LET-GEO-Geo2 5 3 
+LET-GEO-Geo2 5 4 
+LET-GEO-Geo2 5 5 
+LET-GEO-Geo1 0 5 
+LET-GEO-Geo1 1 5 
+LET-GEO-Geo1 4 5 
+LET-GEO-Geo1 5 2 
+LET-GEO-Geo1 5 3 
+LET-GEO-Geo1 5 4 
+LET-GEO-Geo1 5 5 
+LET-FIL-StoSci 0 0 
+LET-FIL-StoSci 0 1 
+LET-FIL-StoSci 0 2 
+LET-FIL-StoSci 0 3 
+LET-FIL-StoSci 0 4 
+LET-FIL-StoSci 0 5 
+LET-FIL-StoSci 1 0 
+LET-FIL-StoSci 1 1 
+LET-FIL-StoSci 1 2 
+LET-FIL-StoSci 1 3 
+LET-FIL-StoSci 1 4 
+LET-FIL-StoSci 1 5 
+LET-FIL-StoSci 2 0 
+LET-FIL-StoSci 2 1 
+LET-FIL-StoSci 2 2 
+LET-FIL-StoSci 4 3 
+LET-FIL-StoSci 4 4 
+LET-FIL-StoSci 4 5 
+LET-FIL-StoSci 5 0 
+LET-FIL-StoSci 5 1 
+LET-FIL-StoSci 5 2 
+LET-FIL-StoSci 5 3 
+LET-FIL-StoSci 5 4 
+LET-FIL-StoSci 5 5 
+LET-FIL-Est 0 0 
+LET-FIL-Est 0 1 
+LET-FIL-Est 0 2 
+LET-FIL-Est 0 3 
+LET-FIL-Est 0 4 
+LET-FIL-Est 0 5 
+LET-FIL-Est 1 0 
+LET-FIL-Est 1 1 
+LET-FIL-Est 1 2 
+LET-FIL-Est 1 3 
+LET-FIL-Est 1 4 
+LET-FIL-Est 1 5 
+LET-FIL-Est 2 0 
+LET-FIL-Est 2 1 
+LET-FIL-Est 2 2 
+LET-FIL-Est 4 3 
+LET-FIL-Est 4 4 
+LET-FIL-Est 4 5 
+LET-FIL-Est 5 0 
+LET-FIL-Est 5 1 
+LET-FIL-Est 5 2 
+LET-FIL-Est 5 3 
+LET-FIL-Est 5 4 
+LET-FIL-Est 5 5 
+LET-CST-StoRom 0 0 
+LET-CST-StoRom 0 1 
+LET-CST-StoRom 0 2 
+LET-CST-StoRom 0 3 
+LET-CST-StoRom 0 4 
+LET-CST-StoRom 0 5 
+LET-CST-StoRom 1 0 
+LET-CST-StoRom 1 1 
+LET-CST-StoRom 1 2 
+LET-CST-StoRom 1 3 
+LET-CST-StoRom 1 4 
+LET-CST-StoRom 1 5 
+LET-CST-StoRom 2 0 
+LET-CST-StoRom 2 1 
+LET-CST-StoRom 2 2 
+LET-CST-StoRom 4 3 
+LET-CST-StoRom 4 4 
+LET-CST-StoRom 4 5 
+LET-CST-StoRom 5 0 
+LET-CST-StoRom 5 1 
+LET-CST-StoRom 5 2 
+LET-CST-StoRom 5 3 
+LET-CST-StoRom 5 4 
+LET-CST-StoRom 5 5 
+LET-CST-StoGre 0 0 
+LET-CST-StoGre 0 1 
+LET-CST-StoGre 0 2 
+LET-CST-StoGre 0 3 
+LET-CST-StoGre 0 4 
+LET-CST-StoGre 0 5 
+LET-CST-StoGre 1 0 
+LET-CST-StoGre 1 1 
+LET-CST-StoGre 1 2 
+LET-CST-StoGre 1 3 
+LET-CST-StoGre 1 4 
+LET-CST-StoGre 1 5 
+LET-CST-StoGre 2 0 
+LET-CST-StoGre 2 1 
+LET-CST-StoGre 2 2 
+LET-CST-StoGre 4 3 
+LET-CST-StoGre 4 4 
+LET-CST-StoGre 4 5 
+LET-CST-StoGre 5 0 
+LET-CST-StoGre 5 1 
+LET-CST-StoGre 5 2 
+LET-CST-StoGre 5 3 
+LET-CST-StoGre 5 4 
+LET-CST-StoGre 5 5 
+LET-CST-EpiLat 0 5 
+LET-CST-EpiLat 1 5 
+LET-CST-EpiLat 4 5 
+LET-CST-EpiLat 5 2 
+LET-CST-EpiLat 5 3 
+LET-CST-EpiLat 5 4 
+LET-CST-EpiLat 5 5 
+LET-CLE-LinLetGre2 0 0 
+LET-CLE-LinLetGre2 0 1 
+LET-CLE-LinLetGre2 0 2 
+LET-CLE-LinLetGre2 0 5 
+LET-CLE-LinLetGre2 1 5 
+LET-CLE-LinLetGre2 2 3 
+LET-CLE-LinLetGre2 2 4 
+LET-CLE-LinLetGre2 2 5 
+LET-CLE-LinLetGre2 3 0 
+LET-CLE-LinLetGre2 3 1 
+LET-CLE-LinLetGre2 3 2 
+LET-CLE-LinLetGre2 3 3 
+LET-CLE-LinLetGre2 3 4 
+LET-CLE-LinLetGre2 3 5 
+LET-CLE-LinLetGre2 4 0 
+LET-CLE-LinLetGre2 4 1 
+LET-CLE-LinLetGre2 4 2 
+LET-CLE-LinLetGre2 4 3 
+LET-CLE-LinLetGre2 4 4 
+LET-CLE-LinLetGre2 4 5 
+LET-CLE-LinLetGre2 5 0 
+LET-CLE-LinLetGre2 5 1 
+LET-CLE-LinLetGre2 5 2 
+LET-CLE-LinLetGre2 5 3 
+LET-CLE-LinLetGre2 5 4 
+LET-CLE-LinLetGre2 5 5 
+LET-CLE-LinLat 0 5 
+LET-CLE-LinLat 1 5 
+LET-CLE-LinLat 4 5 
+LET-CLE-LinLat 5 2 
+LET-CLE-LinLat 5 3 
+LET-CLE-LinLat 5 4 
+LET-CLE-LinLat 5 5 
+LET-CLE-LinGre 0 5 
+LET-CLE-LinGre 1 5 
+LET-CLE-LinGre 4 5 
+LET-CLE-LinGre 5 2 
+LET-CLE-LinGre 5 3 
+LET-CLE-LinGre 5 4 
+LET-CLE-LinGre 5 5 
+LET-CLE-Glo 0 5 
+LET-CLE-Glo 1 5 
+LET-CLE-Glo 4 5 
+LET-CLE-Glo 5 2 
+LET-CLE-Glo 5 3 
+LET-CLE-Glo 5 4 
+LET-CLE-Glo 5 5 
+LET-CLE-FilCla 0 0 
+LET-CLE-FilCla 0 1 
+LET-CLE-FilCla 0 2 
+LET-CLE-FilCla 0 5 
+LET-CLE-FilCla 1 5 
+LET-CLE-FilCla 2 3 
+LET-CLE-FilCla 2 4 
+LET-CLE-FilCla 2 5 
+LET-CLE-FilCla 3 0 
+LET-CLE-FilCla 3 1 
+LET-CLE-FilCla 3 2 
+LET-CLE-FilCla 3 3 
+LET-CLE-FilCla 3 4 
+LET-CLE-FilCla 3 5 
+LET-CLE-FilCla 4 0 
+LET-CLE-FilCla 4 1 
+LET-CLE-FilCla 4 2 
+LET-CLE-FilCla 4 3 
+LET-CLE-FilCla 4 4 
+LET-CLE-FilCla 4 5 
+LET-CLE-FilCla 5 0 
+LET-CLE-FilCla 5 1 
+LET-CLE-FilCla 5 2 
+LET-CLE-FilCla 5 3 
+LET-CLE-FilCla 5 4 
+LET-CLE-FilCla 5 5 
+CBC-LIB-StoLibSta 0 5 
+CBC-LIB-StoLibSta 1 5 
+CBC-LIB-StoLibSta 4 5 
+CBC-LIB-StoLibSta 5 2 
+CBC-LIB-StoLibSta 5 3 
+CBC-LIB-StoLibSta 5 4 
+CBC-LIB-StoLibSta 5 5 
+CBC-LIB-StoBib 0 5 
+CBC-LIB-StoBib 1 5 
+CBC-LIB-StoBib 4 5 
+CBC-LIB-StoBib 5 2 
+CBC-LIB-StoBib 5 3 
+CBC-LIB-StoBib 5 4 
+CBC-LIB-StoBib 5 5 
+CBC-LIB-PalLat 0 5 
+CBC-LIB-PalLat 1 5 
+CBC-LIB-PalLat 4 5 
+CBC-LIB-PalLat 5 2 
+CBC-LIB-PalLat 5 3 
+CBC-LIB-PalLat 5 4 
+CBC-LIB-PalLat 5 5 
+CBC-LIB-InfDoc 0 5 
+CBC-LIB-InfDoc 1 5 
+CBC-LIB-InfDoc 4 5 
+CBC-LIB-InfDoc 5 2 
+CBC-LIB-InfDoc 5 3 
+CBC-LIB-InfDoc 5 4 
+CBC-LIB-InfDoc 5 5 
+CBC-LIB-Cod 0 0 
+CBC-LIB-Cod 0 1 
+CBC-LIB-Cod 0 2 
+CBC-LIB-Cod 0 5 
+CBC-LIB-Cod 1 5 
+CBC-LIB-Cod 2 3 
+CBC-LIB-Cod 2 4 
+CBC-LIB-Cod 2 5 
+CBC-LIB-Cod 3 0 
+CBC-LIB-Cod 3 1 
+CBC-LIB-Cod 3 2 
+CBC-LIB-Cod 3 3 
+CBC-LIB-Cod 3 4 
+CBC-LIB-Cod 3 5 
+CBC-LIB-Cod 4 0 
+CBC-LIB-Cod 4 1 
+CBC-LIB-Cod 4 2 
+CBC-LIB-Cod 4 3 
+CBC-LIB-Cod 4 4 
+CBC-LIB-Cod 4 5 
+CBC-LIB-Cod 5 0 
+CBC-LIB-Cod 5 1 
+CBC-LIB-Cod 5 2 
+CBC-LIB-Cod 5 3 
+CBC-LIB-Cod 5 4 
+CBC-LIB-Cod 5 5 
+CBC-LIB-ArcSpe 0 5 
+CBC-LIB-ArcSpe 1 5 
+CBC-LIB-ArcSpe 4 5 
+CBC-LIB-ArcSpe 5 2 
+CBC-LIB-ArcSpe 5 3 
+CBC-LIB-ArcSpe 5 4 
+CBC-LIB-ArcSpe 5 5 
+CBC-LIB-Arc 0 0 
+CBC-LIB-Arc 0 1 
+CBC-LIB-Arc 0 2 
+CBC-LIB-Arc 0 5 
+CBC-LIB-Arc 1 5 
+CBC-LIB-Arc 2 3 
+CBC-LIB-Arc 2 4 
+CBC-LIB-Arc 2 5 
+CBC-LIB-Arc 3 0 
+CBC-LIB-Arc 3 1 
+CBC-LIB-Arc 3 2 
+CBC-LIB-Arc 3 3 
+CBC-LIB-Arc 3 4 
+CBC-LIB-Arc 3 5 
+CBC-LIB-Arc 4 0 
+CBC-LIB-Arc 4 1 
+CBC-LIB-Arc 4 2 
+CBC-LIB-Arc 4 3 
+CBC-LIB-Arc 4 4 
+CBC-LIB-Arc 4 5 
+CBC-LIB-Arc 5 0 
+CBC-LIB-Arc 5 1 
+CBC-LIB-Arc 5 2 
+CBC-LIB-Arc 5 3 
+CBC-LIB-Arc 5 4 
+CBC-LIB-Arc 5 5 
+CBC-ART-StoTecFot 0 5 
+CBC-ART-StoTecFot 1 5 
+CBC-ART-StoTecFot 4 5 
+CBC-ART-StoTecFot 5 2 
+CBC-ART-StoTecFot 5 3 
+CBC-ART-StoTecFot 5 4 
+CBC-ART-StoTecFot 5 5 
+CBC-ART-StoTecArt 0 5 
+CBC-ART-StoTecArt 1 5 
+CBC-ART-StoTecArt 4 5 
+CBC-ART-StoTecArt 5 2 
+CBC-ART-StoTecArt 5 3 
+CBC-ART-StoTecArt 5 4 
+CBC-ART-StoTecArt 5 5 
+CBC-ART-StoRes 0 5 
+CBC-ART-StoRes 1 5 
+CBC-ART-StoRes 4 5 
+CBC-ART-StoRes 5 2 
+CBC-ART-StoRes 5 3 
+CBC-ART-StoRes 5 4 
+CBC-ART-StoRes 5 5 
+CBC-ART-StoProArtCulMatMed 0 5 
+CBC-ART-StoProArtCulMatMed 1 5 
+CBC-ART-StoProArtCulMatMed 4 5 
+CBC-ART-StoProArtCulMatMed 5 2 
+CBC-ART-StoProArtCulMatMed 5 3 
+CBC-ART-StoProArtCulMatMed 5 4 
+CBC-ART-StoProArtCulMatMed 5 5 
+CBC-ART-StoMus 0 0 
+CBC-ART-StoMus 0 1 
+CBC-ART-StoMus 0 2 
+CBC-ART-StoMus 0 3 
+CBC-ART-StoMus 0 4 
+CBC-ART-StoMus 0 5 
+CBC-ART-StoMus 1 0 
+CBC-ART-StoMus 1 1 
+CBC-ART-StoMus 1 2 
+CBC-ART-StoMus 1 3 
+CBC-ART-StoMus 1 4 
+CBC-ART-StoMus 1 5 
+CBC-ART-StoMus 2 0 
+CBC-ART-StoMus 2 1 
+CBC-ART-StoMus 2 2 
+CBC-ART-StoMus 4 3 
+CBC-ART-StoMus 4 4 
+CBC-ART-StoMus 4 5 
+CBC-ART-StoMus 5 0 
+CBC-ART-StoMus 5 1 
+CBC-ART-StoMus 5 2 
+CBC-ART-StoMus 5 3 
+CBC-ART-StoMus 5 4 
+CBC-ART-StoMus 5 5 
+CBC-ART-StoDisGra 0 5 
+CBC-ART-StoDisGra 1 5 
+CBC-ART-StoDisGra 4 5 
+CBC-ART-StoDisGra 5 2 
+CBC-ART-StoDisGra 5 3 
+CBC-ART-StoDisGra 5 4 
+CBC-ART-StoDisGra 5 5 
+CBC-ART-StoCriCin 0 5 
+CBC-ART-StoCriCin 1 5 
+CBC-ART-StoCriCin 4 5 
+CBC-ART-StoCriCin 5 2 
+CBC-ART-StoCriCin 5 3 
+CBC-ART-StoCriCin 5 4 
+CBC-ART-StoCriCin 5 5 
+CBC-ART-StoCriArt 0 0 
+CBC-ART-StoCriArt 0 1 
+CBC-ART-StoCriArt 0 2 
+CBC-ART-StoCriArt 0 3 
+CBC-ART-StoCriArt 0 4 
+CBC-ART-StoCriArt 0 5 
+CBC-ART-StoCriArt 1 0 
+CBC-ART-StoCriArt 1 1 
+CBC-ART-StoCriArt 1 2 
+CBC-ART-StoCriArt 1 3 
+CBC-ART-StoCriArt 1 4 
+CBC-ART-StoCriArt 1 5 
+CBC-ART-StoCriArt 2 0 
+CBC-ART-StoCriArt 2 1 
+CBC-ART-StoCriArt 2 2 
+CBC-ART-StoCriArt 4 3 
+CBC-ART-StoCriArt 4 4 
+CBC-ART-StoCriArt 4 5 
+CBC-ART-StoCriArt 5 0 
+CBC-ART-StoCriArt 5 1 
+CBC-ART-StoCriArt 5 2 
+CBC-ART-StoCriArt 5 3 
+CBC-ART-StoCriArt 5 4 
+CBC-ART-StoCriArt 5 5 
+CBC-ART-StoArcMed 0 5 
+CBC-ART-StoArcMed 1 5 
+CBC-ART-StoArcMed 3 0 
+CBC-ART-StoArcMed 3 1 
+CBC-ART-StoArcMed 3 2 
+CBC-ART-StoArcMed 3 3 
+CBC-ART-StoArcMed 3 4 
+CBC-ART-StoArcMed 3 5 
+CBC-ART-StoArcMed 4 0 
+CBC-ART-StoArcMed 4 1 
+CBC-ART-StoArcMed 4 2 
+CBC-ART-StoArcMed 4 3 
+CBC-ART-StoArcMed 4 4 
+CBC-ART-StoArcMed 4 5 
+CBC-ART-StoArcMed 5 0 
+CBC-ART-StoArcMed 5 1 
+CBC-ART-StoArcMed 5 2 
+CBC-ART-StoArcMed 5 3 
+CBC-ART-StoArcMed 5 4 
+CBC-ART-StoArcMed 5 5 
+CBC-ART-StoArcCon 0 5 
+CBC-ART-StoArcCon 1 5 
+CBC-ART-StoArcCon 4 5 
+CBC-ART-StoArcCon 5 2 
+CBC-ART-StoArcCon 5 3 
+CBC-ART-StoArcCon 5 4 
+CBC-ART-StoArcCon 5 5 
+CBC-ART-SocArt 0 5 
+CBC-ART-SocArt 1 5 
+CBC-ART-SocArt 4 5 
+CBC-ART-SocArt 5 2 
+CBC-ART-SocArt 5 3 
+CBC-ART-SocArt 5 4 
+CBC-ART-SocArt 5 5 
+CBC-ART-MatCarCosResEdiSto 0 0 
+CBC-ART-MatCarCosResEdiSto 0 1 
+CBC-ART-MatCarCosResEdiSto 0 2 
+CBC-ART-MatCarCosResEdiSto 0 5 
+CBC-ART-MatCarCosResEdiSto 1 5 
+CBC-ART-MatCarCosResEdiSto 2 3 
+CBC-ART-MatCarCosResEdiSto 2 4 
+CBC-ART-MatCarCosResEdiSto 2 5 
+CBC-ART-MatCarCosResEdiSto 3 0 
+CBC-ART-MatCarCosResEdiSto 3 1 
+CBC-ART-MatCarCosResEdiSto 3 2 
+CBC-ART-MatCarCosResEdiSto 3 3 
+CBC-ART-MatCarCosResEdiSto 3 4 
+CBC-ART-MatCarCosResEdiSto 3 5 
+CBC-ART-MatCarCosResEdiSto 4 0 
+CBC-ART-MatCarCosResEdiSto 4 1 
+CBC-ART-MatCarCosResEdiSto 4 2 
+CBC-ART-MatCarCosResEdiSto 4 3 
+CBC-ART-MatCarCosResEdiSto 4 4 
+CBC-ART-MatCarCosResEdiSto 4 5 
+CBC-ART-MatCarCosResEdiSto 5 0 
+CBC-ART-MatCarCosResEdiSto 5 1 
+CBC-ART-MatCarCosResEdiSto 5 2 
+CBC-ART-MatCarCosResEdiSto 5 3 
+CBC-ART-MatCarCosResEdiSto 5 4 
+CBC-ART-MatCarCosResEdiSto 5 5 
+CBC-ART-EleInfSciCatBenCul 0 5 
+CBC-ART-EleInfSciCatBenCul 1 5 
+CBC-ART-EleInfSciCatBenCul 4 5 
+CBC-ART-EleInfSciCatBenCul 5 2 
+CBC-ART-EleInfSciCatBenCul 5 3 
+CBC-ART-EleInfSciCatBenCul 5 4 
+CBC-ART-EleInfSciCatBenCul 5 5 
+CBC-ART-ArcStoArtMusA 0 5 
+CBC-ART-ArcStoArtMusA 1 5 
+CBC-ART-ArcStoArtMusA 4 5 
+CBC-ART-ArcStoArtMusA 5 2 
+CBC-ART-ArcStoArtMusA 5 3 
+CBC-ART-ArcStoArtMusA 5 4 
+CBC-ART-ArcStoArtMusA 5 5 
+CBC-ARC-TopRilMonAnt 0 5 
+CBC-ARC-TopRilMonAnt 1 5 
+CBC-ARC-TopRilMonAnt 4 5 
+CBC-ARC-TopRilMonAnt 5 2 
+CBC-ARC-TopRilMonAnt 5 3 
+CBC-ARC-TopRilMonAnt 5 4 
+CBC-ARC-TopRilMonAnt 5 5 
+CBC-ARC-Palantro 0 5 
+CBC-ARC-Palantro 1 5 
+CBC-ARC-Palantro 4 5 
+CBC-ARC-Palantro 5 2 
+CBC-ARC-Palantro 5 3 
+CBC-ARC-Palantro 5 4 
+CBC-ARC-Palantro 5 5 
+CBC-ARC-MatTecAppArc 0 0 
+CBC-ARC-MatTecAppArc 0 1 
+CBC-ARC-MatTecAppArc 0 2 
+CBC-ARC-MatTecAppArc 0 5 
+CBC-ARC-MatTecAppArc 1 5 
+CBC-ARC-MatTecAppArc 2 3 
+CBC-ARC-MatTecAppArc 2 4 
+CBC-ARC-MatTecAppArc 2 5 
+CBC-ARC-MatTecAppArc 3 0 
+CBC-ARC-MatTecAppArc 3 1 
+CBC-ARC-MatTecAppArc 3 2 
+CBC-ARC-MatTecAppArc 3 3 
+CBC-ARC-MatTecAppArc 3 4 
+CBC-ARC-MatTecAppArc 3 5 
+CBC-ARC-MatTecAppArc 4 0 
+CBC-ARC-MatTecAppArc 4 1 
+CBC-ARC-MatTecAppArc 4 2 
+CBC-ARC-MatTecAppArc 4 3 
+CBC-ARC-MatTecAppArc 4 4 
+CBC-ARC-MatTecAppArc 4 5 
+CBC-ARC-MatTecAppArc 5 0 
+CBC-ARC-MatTecAppArc 5 1 
+CBC-ARC-MatTecAppArc 5 2 
+CBC-ARC-MatTecAppArc 5 3 
+CBC-ARC-MatTecAppArc 5 4 
+CBC-ARC-MatTecAppArc 5 5 
+CBC-ARC-LinLat 0 5 
+CBC-ARC-LinLat 1 5 
+CBC-ARC-LinLat 4 5 
+CBC-ARC-LinLat 5 2 
+CBC-ARC-LinLat 5 3 
+CBC-ARC-LinLat 5 4 
+CBC-ARC-LinLat 5 5 
+CBC-ARC-Geo1 0 5 
+CBC-ARC-Geo1 1 5 
+CBC-ARC-Geo1 4 5 
+CBC-ARC-Geo1 5 2 
+CBC-ARC-Geo1 5 3 
+CBC-ARC-Geo1 5 4 
+CBC-ARC-Geo1 5 5 
+CBC-ARC-EtrAntIta 0 5 
+CBC-ARC-EtrAntIta 1 5 
+CBC-ARC-EtrAntIta 4 5 
+CBC-ARC-EtrAntIta 5 2 
+CBC-ARC-EtrAntIta 5 3 
+CBC-ARC-EtrAntIta 5 4 
+CBC-ARC-EtrAntIta 5 5 
+CBC-ARC-ArcCriMed 0 5 
+CBC-ARC-ArcCriMed 1 5 
+CBC-ARC-ArcCriMed 4 5 
+CBC-ARC-ArcCriMed 5 2 
+CBC-ARC-ArcCriMed 5 3 
+CBC-ARC-ArcCriMed 5 4 
+CBC-ARC-ArcCriMed 5 5 
+CBC-ARC-ArcCla2 0 5 
+CBC-ARC-ArcCla2 1 5 
+CBC-ARC-ArcCla2 4 5 
+CBC-ARC-ArcCla2 5 2 
+CBC-ARC-ArcCla2 5 3 
+CBC-ARC-ArcCla2 5 4 
+CBC-ARC-ArcCla2 5 5 
+
+END.
