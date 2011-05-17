@@ -1,13 +1,17 @@
 package net.sf.cpsolver.itc.heuristics.search;
 
 import java.text.DecimalFormat;
-import java.util.Enumeration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.Vector;
 
 import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Model;
 import net.sf.cpsolver.ifs.model.Neighbour;
+import net.sf.cpsolver.ifs.model.Value;
+import net.sf.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.ifs.solution.Solution;
 import net.sf.cpsolver.ifs.solution.SolutionListener;
 import net.sf.cpsolver.ifs.solver.Solver;
@@ -48,12 +52,12 @@ import org.apache.log4j.Logger;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -61,17 +65,17 @@ import org.apache.log4j.Logger;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ItcHillClimber implements NeighbourSelection, SolutionListener, LazyNeighbourAcceptanceCriterion {
+public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T>, SolutionListener<V,T>, LazyNeighbourAcceptanceCriterion<V,T> {
     private static Logger sLog = Logger.getLogger(ItcHillClimber.class);
     private static DecimalFormat sDF2 = new DecimalFormat("0.00");
     private static boolean sInfo = sLog.isInfoEnabled();
     private int iMaxIdleIters = 200000;
     private int iLastImprovingIter = 0;
     private int iIter = 0;
-    private Vector iNeighbourSelectors = new Vector();
+    private List<NeighbourSelector<V,T>> iNeighbourSelectors = new ArrayList<NeighbourSelector<V,T>>();
     private long iT0 = -1;
     private boolean iRandomSelection = false;
     private boolean iUpdatePoints = false;
@@ -100,18 +104,18 @@ public class ItcHillClimber implements NeighbourSelection, SolutionListener, Laz
                 bonus = Double.parseDouble(nsClassName.substring(nsClassName.indexOf('@')+1));
                 nsClassName = nsClassName.substring(0, nsClassName.indexOf('@'));
             }
-            Class nsClass = Class.forName(nsClassName);
-            NeighbourSelection ns = (NeighbourSelection)nsClass.getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[]{properties});
+            Class<?> nsClass = Class.forName(nsClassName);
+            @SuppressWarnings("unchecked")
+			NeighbourSelection<V,T> ns = (NeighbourSelection<V,T>)nsClass.getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[]{properties});
             addNeighbourSelection(ns,bonus);
         }
     }
     
     /** Initialization */
-    public void init(Solver solver) {
+    public void init(Solver<V,T> solver) {
         solver.currentSolution().addSolutionListener(this);
         iTotalBonus = 0;
-        for (Enumeration e=iNeighbourSelectors.elements();e.hasMoreElements();) {
-            NeighbourSelector s = (NeighbourSelector)e.nextElement();
+        for (NeighbourSelector<V,T> s: iNeighbourSelectors) {
             s.init(solver);
             if (s.selection() instanceof HillClimberSelection)
                 ((HillClimberSelection)s.selection()).setHcMode(true);
@@ -119,17 +123,15 @@ public class ItcHillClimber implements NeighbourSelection, SolutionListener, Laz
         }
     }
     
-    private void addNeighbourSelection(NeighbourSelection ns, double bonus) {
-        iNeighbourSelectors.add(new NeighbourSelector(ns, bonus, iUpdatePoints));
+    private void addNeighbourSelection(NeighbourSelection<V,T> ns, double bonus) {
+        iNeighbourSelectors.add(new NeighbourSelector<V,T>(ns, bonus, iUpdatePoints));
     }
     
     private double totalPoints() {
         if (!iUpdatePoints) return iTotalBonus;
         double total = 0;
-        for (Enumeration e=iNeighbourSelectors.elements();e.hasMoreElements();) {
-            NeighbourSelector ns = (NeighbourSelector)e.nextElement();
+        for (NeighbourSelector<V,T> ns: iNeighbourSelectors)
             total += ns.getPoints();
-        }
         return total;
     }
     
@@ -139,37 +141,34 @@ public class ItcHillClimber implements NeighbourSelection, SolutionListener, Laz
      * its value is below or equal to zero (continue with the next selection otherwise).
      * Return null when the given number of idle iterations is reached.
      */
-    public Neighbour selectNeighbour(Solution solution) {
+    public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
         if (iT0<0) iT0 = System.currentTimeMillis();
-        Model model = (Model)solution.getModel();
         while (true) {
             iIter ++;
             if (iIter % 10000 == 0) {
                 if (sInfo) {
                     sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
                     if (iUpdatePoints)
-                        for (Enumeration e=iNeighbourSelectors.elements();e.hasMoreElements();) {
-                            NeighbourSelector ns = (NeighbourSelector)e.nextElement();
+                        for (NeighbourSelector<V,T> ns: iNeighbourSelectors)
                             sLog.info("  "+ns+" ("+sDF2.format(ns.getPoints())+" pts, "+sDF2.format(100.0*(iUpdatePoints?ns.getPoints():ns.getBonus())/totalPoints())+"%)");
-                        }
                 }
             }
             if (iIter-iLastImprovingIter>=iMaxIdleIters) break;
-            NeighbourSelector ns = null;
+            NeighbourSelector<V,T> ns = null;
             if (iRandomSelection) {
-                ns = (NeighbourSelector)ToolBox.random(iNeighbourSelectors);
+                ns = ToolBox.random(iNeighbourSelectors);
             } else {
                 double points = (ToolBox.random()*totalPoints());
-                for (Enumeration e=iNeighbourSelectors.elements();e.hasMoreElements();) {
-                    ns = (NeighbourSelector)e.nextElement();
+                for (Iterator<NeighbourSelector<V,T>> i = iNeighbourSelectors.iterator(); i.hasNext(); ) {
+                    ns = i.next();
                     points -= (iUpdatePoints?ns.getPoints():ns.getBonus());
                     if (points<=0) break;
                 }
             }
-            Neighbour n = ns.selectNeighbour(solution);
+            Neighbour<V,T> n = ns.selectNeighbour(solution);
             if (n!=null) {
                 if (n instanceof ItcLazyNeighbour) {
-                    ((ItcLazyNeighbour)n).setAcceptanceCriterion(this);
+                    ((ItcLazyNeighbour<V,T>)n).setAcceptanceCriterion(this);
                     return n;
                 } else if (n.value()<=0.0) return n;
             }
@@ -179,21 +178,21 @@ public class ItcHillClimber implements NeighbourSelection, SolutionListener, Laz
     }
     
     /** Implementation of {@link net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion} interface */
-    public boolean accept(ItcLazyNeighbour neighbour, double value) {
+    public boolean accept(ItcLazyNeighbour<V,T> neighbour, double value) {
         return value<=0;
     }
 
     /**
      * Memorize the iteration when the last best solution was found.
      */
-    public void bestSaved(Solution solution) {
+    public void bestSaved(Solution<V,T> solution) {
         iLastImprovingIter = iIter;
     }
-    public void solutionUpdated(Solution solution) {}
-    public void getInfo(Solution solution, java.util.Dictionary info) {}
-    public void getInfo(Solution solution, java.util.Dictionary info, java.util.Vector variables) {}
-    public void bestCleared(Solution solution) {}
-    public void bestRestored(Solution solution){}  
+    public void solutionUpdated(Solution<V,T> solution) {}
+    public void getInfo(Solution<V,T> solution, Map<String, String> info) {}
+    public void getInfo(Solution<V,T> solution, Map<String, String> info, Collection<V> variables) {}
+    public void bestCleared(Solution<V,T> solution) {}
+    public void bestRestored(Solution<V,T> solution){}  
     
     public static interface HillClimberSelection {
         public void setHcMode(boolean hcMode);
@@ -204,10 +203,10 @@ public class ItcHillClimber implements NeighbourSelection, SolutionListener, Laz
      * given neighbour selector.
      *
      */
-    protected static class NeighbourSelector implements NeighbourSelection {
+    protected static class NeighbourSelector<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T> {
         protected static DecimalFormat sDF = new DecimalFormat("0.00");
         private boolean iUpdate = false;
-        private NeighbourSelection iSelection;
+        private NeighbourSelection<V,T> iSelection;
         private int iNrCalls = 0;
         private int iNrNotNull = 0;
         private int iNrSideMoves = 0;
@@ -224,22 +223,22 @@ public class ItcHillClimber implements NeighbourSelection, SolutionListener, Laz
          * for initial bonus 0.1 
          * @param update update selector bonus after each iteration
          */
-        public NeighbourSelector(NeighbourSelection sel, double bonus, boolean update) {
+        public NeighbourSelector(NeighbourSelection<V,T> sel, double bonus, boolean update) {
             iSelection = sel;
             iBonus = bonus;
             iUpdate = update;
         }
         /** Initialization */
-        public void init(Solver solver) {
+        public void init(Solver<V,T> solver) {
             iSelection.init(solver);
         }
         /** Neighbour selection -- use {@link NeighbourSelection#selectNeighbour(Solution)} 
          * update stats if desired.
          */
-        public Neighbour selectNeighbour(Solution solution) {
+        public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
             if (iUpdate) {
                 long t0 = System.currentTimeMillis();
-                Neighbour n = iSelection.selectNeighbour(solution);
+                Neighbour<V,T> n = iSelection.selectNeighbour(solution);
                 long t1 = System.currentTimeMillis();
                 update(n, t1-t0);
                 return n;
@@ -252,7 +251,7 @@ public class ItcHillClimber implements NeighbourSelection, SolutionListener, Laz
          * @param n generated move
          * @param time time needed to generate the move (in milliseconds)
          */
-        public void update(Neighbour n, long time) {
+        public void update(Neighbour<V,T> n, long time) {
             iNrCalls ++;
             iTime += time;
             if (n!=null) {
@@ -276,7 +275,7 @@ public class ItcHillClimber implements NeighbourSelection, SolutionListener, Laz
         /** Initial bonus */
         public double getBonus() { return iBonus; }
         /** Given neighbour selection */
-        public NeighbourSelection selection() { return iSelection; }
+        public NeighbourSelection<V,T> selection() { return iSelection; }
         /** Number of calls of {@link NeighbourSelection#selectNeighbour(Solution)} */
         public int nrCalls() { return iNrCalls; }
         /** Number of returned not-null moves */

@@ -20,12 +20,12 @@ import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -33,22 +33,22 @@ import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 
-public class ItcNotConflictingMove implements NeighbourSelection {
+public class ItcNotConflictingMove<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T> {
     /** Constructor */
     public ItcNotConflictingMove(DataProperties properties) {}
     /** Initialization */
-    public void init(Solver solver) {}
+    public void init(Solver<V,T> solver) {}
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
-        Model model = solution.getModel();
-        Variable variable = (Variable)ToolBox.random(model.variables());
-        Value value = (Value)ToolBox.random(variable.values());
+    public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
+        Model<V,T> model = solution.getModel();
+        V variable = ToolBox.random(model.variables());
+        T value = ToolBox.random(variable.values());
         if (value.equals(variable.getAssignment())) return null;
         if (model.inConflict(value)) return null;
-        return new ItcSimpleNeighbour(variable,value);
+        return new ItcSimpleNeighbour<V,T>(variable,value);
     }
 }

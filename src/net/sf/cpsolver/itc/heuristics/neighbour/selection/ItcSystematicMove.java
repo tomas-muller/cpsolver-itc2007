@@ -1,14 +1,15 @@
 package net.sf.cpsolver.itc.heuristics.neighbour.selection;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Set;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Vector;
 
 import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
 import net.sf.cpsolver.ifs.model.Model;
 import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.SimpleNeighbour;
 import net.sf.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.ifs.solution.Solution;
@@ -30,12 +31,12 @@ import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -43,16 +44,17 @@ import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ItcSystematicMove implements NeighbourSelection {
+public class ItcSystematicMove<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T> {
     private double iValueWeight = 1;
     private double iConflictWeight = 100;
     private boolean iRandomOrder = true;
     private boolean iAllowSwaps = true;
-    private Enumeration iVarEn = null, iValEn = null;
-    private Variable iVariable = null;
+    private Iterator<V> iVarEn = null;
+    private Iterator<Object> iValEn = null;
+    private V iVariable = null;
     
     /** Constructor */
     public ItcSystematicMove(DataProperties properties) {
@@ -63,81 +65,84 @@ public class ItcSystematicMove implements NeighbourSelection {
     }
     
     /** Initialization */
-    public void init(Solver solver) {
+    public void init(Solver<V,T> solver) {
     }
     
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
-        Model model = solution.getModel();
+    @SuppressWarnings("unchecked")
+	public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
+        Model<V,T> model = solution.getModel();
         if (iVarEn==null) {
-            iVarEn = new RandomEnumeration(model.variables(), iRandomOrder);
-            iVariable = (Variable)iVarEn.nextElement();
-            Vector v2 = new Vector(iVariable.values().size()+model.variables().size());
+            iVarEn = new RandomIterator<V>(model.variables(), iRandomOrder);
+            iVariable = iVarEn.next();
+            List<Object> v2 = new ArrayList<Object>(iVariable.values().size() + model.variables().size());
             if (iAllowSwaps && iVariable instanceof Swapable)
                 v2.addAll(model.variables());
             v2.addAll(iVariable.values());
-            iValEn = new RandomEnumeration(v2, iRandomOrder);
+            iValEn = new RandomIterator<Object>(v2, iRandomOrder);
         }
-        SimpleNeighbour n = null;
-        if (!iValEn.hasMoreElements()) {
-            if (!iVarEn.hasMoreElements()) {
-                iVarEn = new RandomEnumeration(model.variables(), iRandomOrder);
+        if (!iValEn.hasNext()) {
+            if (!iVarEn.hasNext()) {
+                iVarEn = new RandomIterator<V>(model.variables(), iRandomOrder);
             }
-            iVariable = (Variable)iVarEn.nextElement();
-            Vector v2 = new Vector(iVariable.values().size()+model.variables().size());
+            iVariable = iVarEn.next();
+            List<Object> v2 = new ArrayList<Object>(iVariable.values().size() + model.variables().size());
             if (iAllowSwaps && iVariable instanceof Swapable)
                 v2.addAll(model.variables());
             v2.addAll(iVariable.values());
-            iValEn = new RandomEnumeration(v2, iRandomOrder);
+            iValEn = new RandomIterator<Object>(v2, iRandomOrder);
         }
-        Object object = iValEn.nextElement();
+        Object object = iValEn.next();
         if (object instanceof Variable) {
-            Variable anotherVariable = (Variable)ToolBox.random(model.variables());
+            V anotherVariable = (V)ToolBox.random(model.variables());
             if (iVariable.equals(anotherVariable)) return null;
-            return ((Swapable)iVariable).findSwap(anotherVariable);
+            return ((Swapable<V,T>)iVariable).findSwap(anotherVariable);
         } else {
-            Value value = (Value)object;
+            T value = (T)object;
             if (value.equals(iVariable.getAssignment())) return null;
-            Set conflicts = model.conflictValues(value);
             double eval = iValueWeight * value.toDouble();
             if (iVariable.getAssignment()!=null)
                 eval -= iValueWeight * iVariable.getAssignment().toDouble();
             else
                 eval -= iConflictWeight;
             eval += iConflictWeight * model.conflictValues(value).size();
-            return new ItcSimpleNeighbour(iVariable,value,eval);
+            return new ItcSimpleNeighbour<V,T>(iVariable,value,eval);
         }
     }
     
     /** Randomized enumeration */
-    public static class RandomEnumeration implements Enumeration {
-        private Enumeration iEnum = null;
+    public static class RandomIterator<E> implements Iterator<E> {
+        private Iterator<E> iEnum = null;
         /** Constructor 
          * @param collection a collection that should be enumerated
          **/
-        public RandomEnumeration(Vector collection) {
+        public RandomIterator(Collection<E> collection) {
             this(collection, true);
         }
         /** Constructor 
          * @param collection a collection that should be enumerated
          * @param randomOrder if false, given collection is enumerated in normal order (i.e., same as {@link Vector#elements()}) 
          **/
-        public RandomEnumeration(Vector collection, boolean randomOrder) {
+        public RandomIterator(Collection<E> collection, boolean randomOrder) {
             if (!randomOrder) {
-                iEnum = collection.elements();
+                iEnum = collection.iterator();
             } else {
-                Vector vect = new Vector(collection);
+                List<E> vect = new ArrayList<E>(collection);
                 Collections.shuffle(vect, ToolBox.getRandom());
-                iEnum = vect.elements();
+                iEnum = vect.iterator();
             }
         }
         /** True if there are more elements to enumerate */
-        public boolean hasMoreElements() {
-            return iEnum.hasMoreElements();
+        public boolean hasNext() {
+            return iEnum.hasNext();
         }
         /** Next element */
-        public Object nextElement() {
-            return iEnum.nextElement();
+        public E next() {
+            return iEnum.next();
+        }
+        /** Remove an element */
+        public void remove() {
+        	iEnum.remove();
         }
     }
 }

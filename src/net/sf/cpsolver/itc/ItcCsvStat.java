@@ -2,7 +2,7 @@ package net.sf.cpsolver.itc;
 
 import java.io.File;
 import java.text.DecimalFormat;
-import java.util.Enumeration;
+import java.util.Iterator;
 
 import net.sf.cpsolver.ifs.util.CSVFile;
 import net.sf.cpsolver.ifs.util.CSVFile.CSVField;
@@ -15,12 +15,12 @@ import net.sf.cpsolver.ifs.util.CSVFile.CSVLine;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,8 +28,8 @@ import net.sf.cpsolver.ifs.util.CSVFile.CSVLine;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class ItcCsvStat {
     private int iCnt = 0;
@@ -93,14 +93,13 @@ public class ItcCsvStat {
                 System.out.println("file: "+args[i]);
                 CSVFile f = new CSVFile(new File(args[i]));
                 ItcCsvStat s = new ItcCsvStat("total");
-                for (Enumeration e=f.getLines().elements();e.hasMoreElements();) {
-                    CSVLine l = (CSVLine)e.nextElement();
+                for (CSVLine l: f.getLines()) {
                     s.add(l.getField("total").toDouble());
                 }
                 System.out.println(s);
                 CSVLine l = f.getLine(s.getMinLine());
-                for (Enumeration e=f.getHeader().fields();e.hasMoreElements();) {
-                    CSVField h = (CSVField)e.nextElement();
+                for (Iterator<CSVField> j = f.getHeader().fields(); j.hasNext(); ) {
+                	CSVField h = j.next();
                     System.out.println("  "+h+"="+l.getField(h.toString()));
                 }
                 System.out.println("--------------------------------------------------");

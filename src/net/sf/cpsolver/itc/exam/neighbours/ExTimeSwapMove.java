@@ -14,8 +14,6 @@ import net.sf.cpsolver.itc.exam.model.ExModel;
 import net.sf.cpsolver.itc.exam.model.ExPeriod;
 import net.sf.cpsolver.itc.exam.model.ExPlacement;
 
-import org.apache.log4j.Logger;
-
 /**
  * Try to swap periods between two randomly selected exams.
  * 
@@ -23,12 +21,12 @@ import org.apache.log4j.Logger;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,19 +34,18 @@ import org.apache.log4j.Logger;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExTimeSwapMove implements NeighbourSelection {
-    private static Logger sLog = Logger.getLogger(ExTimeMove.class);
-    
+public class ExTimeSwapMove implements NeighbourSelection<ExExam, ExPlacement> {
+	
     /** Constructor */
     public ExTimeSwapMove(DataProperties properties) {}
     /** Initialization */
-    public void init(Solver solver) {}
+    public void init(Solver<ExExam, ExPlacement> solver) {}
     
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
+    public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
         ExExam exam = (ExExam)ToolBox.random(model.variables());
         ExPlacement placement = (ExPlacement)exam.getAssignment();
@@ -59,9 +56,9 @@ public class ExTimeSwapMove implements NeighbourSelection {
             ExPeriod period = model.getPeriod(periodIdx);
             if (exam.getLength()>period.getLength()) continue;
             ExPlacement p = new ExPlacement(exam, period, placement.getRoom());
-            Set conflicts = model.conflictValues(p);
+            Set<ExPlacement> conflicts = model.conflictValues(p);
             if (conflicts.size()==1) {
-                Neighbour n = exam.findSwap(((ExPlacement)conflicts.iterator().next()).variable());
+                Neighbour<ExExam, ExPlacement> n = exam.findSwap(conflicts.iterator().next().variable());
                 if (n!=null) return n;
             }
         }

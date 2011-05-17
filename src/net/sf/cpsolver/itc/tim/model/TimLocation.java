@@ -1,6 +1,5 @@
 package net.sf.cpsolver.itc.tim.model;
 
-import java.util.Enumeration;
 import java.util.Iterator;
 
 import net.sf.cpsolver.ifs.model.Value;
@@ -14,12 +13,12 @@ import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,10 +26,10 @@ import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class TimLocation extends Value implements TabuElement {
+public class TimLocation extends Value<TimEvent, TimLocation> implements TabuElement {
 	private int iTime = 0;
 	private TimRoom iRoom = null;
 	private int iHashCode = 0;
@@ -83,8 +82,7 @@ public class TimLocation extends Value implements TabuElement {
         int t = iTime % 9;
         if (t==8) score[1]=event.students().size();
         int dfs = d*9, dls = dfs + 8; 
-        for (Enumeration e=event.students().elements();e.hasMoreElements();) {
-            TimStudent student = (TimStudent)e.nextElement();
+        for (TimStudent student: event.students()) {
             TimLocation[] table = student.getTable();
             int eventsADay = 1;
             int left = 0;
@@ -157,8 +155,7 @@ public class TimLocation extends Value implements TabuElement {
         int d = iTime / 9, t = iTime % 9;
         int score = (t==8?event.students().size():0);
         int dfs = d*9, dls = dfs + 8; 
-        for (Enumeration e=event.students().elements();e.hasMoreElements();) {
-            TimStudent student = (TimStudent)e.nextElement();
+        for (TimStudent student: event.students()) {
             TimLocation[] table = student.getTable();
             int eventsADay = 1;
             int left = 0;
@@ -198,12 +195,12 @@ public class TimLocation extends Value implements TabuElement {
 	public int precedenceViolations() {
 	    int violations = 0;
 	    TimEvent event = (TimEvent)variable();
-	    for (Iterator i=event.predecessors().iterator();i.hasNext();) {
-	        TimLocation prev = (TimLocation)((TimEvent)i.next()).getAssignment();
+	    for (Iterator<TimEvent> i=event.predecessors().iterator();i.hasNext();) {
+	        TimLocation prev = i.next().getAssignment();
 	        if (prev!=null && prev.time()>=time()) violations++;//+=Math.min(event.students().size(),((TimEvent)prev.variable()).students().size());
 	    }
-        for (Iterator i=event.successors().iterator();i.hasNext();) {
-            TimLocation next = (TimLocation)((TimEvent)i.next()).getAssignment();
+        for (Iterator<TimEvent> i=event.successors().iterator();i.hasNext();) {
+            TimLocation next = i.next().getAssignment();
             if (next!=null && time()>=next.time()) violations++;//+=Math.min(event.students().size(),((TimEvent)next.variable()).students().size());
         }
 	    return violations;
@@ -215,7 +212,7 @@ public class TimLocation extends Value implements TabuElement {
 	}
 
 	/** Compare two locations for equality */
-	public boolean equals(Value another) {
+	public boolean equals(Object another) {
 		if (another==null || !(another instanceof TimLocation)) return false;
 		TimLocation location = (TimLocation)another;
 		return variable().getId()==location.variable().getId() && hashCode()==location.hashCode();

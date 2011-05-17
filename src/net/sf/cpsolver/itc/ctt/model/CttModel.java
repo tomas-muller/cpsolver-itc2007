@@ -5,14 +5,13 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.PrintWriter;
-import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.Vector;
 
 import org.apache.log4j.Logger;
 
-import net.sf.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -22,12 +21,12 @@ import net.sf.cpsolver.itc.ItcModel;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,18 +34,18 @@ import net.sf.cpsolver.itc.ItcModel;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class CttModel extends ItcModel {
+public class CttModel extends ItcModel<CttLecture, CttPlacement> {
     private static Logger sLog = Logger.getLogger(CttModel.class); 
     private String iName = null;
     private int iNrDays = 0;
     private int iNrSlotsPerDay = 0;
-    private Vector iCourses = new Vector();
-    private Vector iRooms = new Vector();
-    private Vector iCurriculas = new Vector();
-    private Vector iTeachers = new Vector();
+    private List<CttCourse> iCourses = new ArrayList<CttCourse>();
+    private List<CttRoom> iRooms = new ArrayList<CttRoom>();
+    private List<CttCurricula> iCurriculas = new ArrayList<CttCurricula>();
+    private List<CttTeacher> iTeachers = new ArrayList<CttTeacher>();
     
     private int iCompactPenalty = 0;
     private int iRoomPenalty = 0;
@@ -86,54 +85,47 @@ public class CttModel extends ItcModel {
         iNrSlotsPerDay = nrSlotsPerDay;
     }
     /** List of all courses */
-    public Vector getCourses() {
+    public List<CttCourse> getCourses() {
         return iCourses;
     }
     /** Return a course of given id */
     public CttCourse getCourse(String id) {
-        for (Enumeration e=iCourses.elements();e.hasMoreElements();) {
-            CttCourse course = (CttCourse)e.nextElement();
+        for (CttCourse course: iCourses)
             if (id.equals(course.getId())) return course;
-        }
         return null;
     }
 
     /** List of all rooms */
-    public Vector getRooms() {
+    public List<CttRoom> getRooms() {
         return iRooms;
     }
     /** Return a room of given id */
     public CttRoom getRoom(String id) {
-        for (Enumeration e=iRooms.elements();e.hasMoreElements();) {
-            CttRoom room = (CttRoom)e.nextElement();
+        for (CttRoom room: iRooms)
             if (id.equals(room.getId())) return room;
-        }
         return null;
     }
     
     /** List of all curriculas */
-    public Vector getCurriculas() {
+    public List<CttCurricula> getCurriculas() {
         return iCurriculas;
     }
+    
     /** Return a curricula of given id */
     public CttCurricula getCurricula(String id) {
-        for (Enumeration e=iCurriculas.elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        for (CttCurricula curricula: iCurriculas)
             if (id.equals(curricula.getId())) return curricula;
-        }
         return null;
     }
     
     /** List of all teachers */
-    public Vector getTeachers() {
+    public List<CttTeacher> getTeachers() {
         return iTeachers;
     }
     /** Return a teacher of given id */
     public CttTeacher getTeacher(String id) {
-        for (Enumeration e=iTeachers.elements();e.hasMoreElements();) {
-            CttTeacher teacher = (CttTeacher)e.nextElement();
+        for (CttTeacher teacher: iTeachers)
             if (id.equals(teacher.getId())) return teacher;
-        }
         CttTeacher teacher = new CttTeacher(this, id);
         iTeachers.add(teacher);
         return teacher;
@@ -147,10 +139,8 @@ public class CttModel extends ItcModel {
     public int getCompactPenalty(boolean precise) {
         if (!precise) return iCompactPenalty;
         int penalty = 0;
-        for (Enumeration e=iCurriculas.elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        for (CttCurricula curricula: iCurriculas)
             penalty += curricula.getCompactPenalty();
-        }
         return penalty;
     }
     
@@ -163,10 +153,8 @@ public class CttModel extends ItcModel {
     public int getRoomPenalty(boolean precise) {
         if (!precise) return iRoomPenalty;
         int penalty = 0;
-        for (Enumeration e=iCourses.elements();e.hasMoreElements();) {
-            CttCourse course = (CttCourse)e.nextElement();
+        for (CttCourse course: iCourses)
             penalty += course.getRoomPenalty();
-        }
         return penalty;
     }
     
@@ -178,10 +166,8 @@ public class CttModel extends ItcModel {
     public int getMinDaysPenalty(boolean precise) {
         if (!precise) return iMinDaysPenalty;
         int penalty = 0;
-        for (Enumeration e=iCourses.elements();e.hasMoreElements();) {
-            CttCourse course = (CttCourse)e.nextElement();
+        for (CttCourse course: iCourses)
             penalty += course.getMinDaysPenalty();
-        }
         return penalty;
     }
 
@@ -193,11 +179,9 @@ public class CttModel extends ItcModel {
     public int getRoomCapPenalty(boolean precise) {
         if (!precise) return iRoomCapPenalty;
         int penalty = 0;
-        for (Enumeration e=variables().elements();e.hasMoreElements();) {
-            CttLecture lecture = (CttLecture)e.nextElement();
+        for (CttLecture lecture: variables())
             if (lecture.getAssignment()!=null)
                 penalty += ((CttPlacement)lecture.getAssignment()).getRoomCapPenalty();
-        }
         return penalty;
     }
     
@@ -223,8 +207,8 @@ public class CttModel extends ItcModel {
     /**
      * Solution info, added values of given criteria, that is, room capacity penalty, minimum working days penalty, curriculum compactness penalty, and room stability penalty.
      */
-    public Hashtable getInfo() {
-        Hashtable info = super.getInfo();
+    public Map<String, String> getInfo() {
+    	Map<String, String> info = super.getInfo();
         info.put("RoomCapacity",String.valueOf(getRoomCapPenalty(false)));
         info.put("MinimumWorkingDays",String.valueOf(getMinDaysPenalty(false)));
         info.put("CurriculumCompactness",String.valueOf(getCompactPenalty(false)));
@@ -235,8 +219,8 @@ public class CttModel extends ItcModel {
     /**
      * Extended solution info, added precise computation of values of given criteria, that is, room capacity penalty, minimum working days penalty, curriculum compactness penalty, and room stability penalty.
      */
-    public Hashtable getExtendedInfo() {
-        Hashtable info = super.getExtendedInfo();
+    public Map<String, String> getExtendedInfo() {
+    	Map<String, String> info = super.getExtendedInfo();
         info.put("RoomCapacity [p]",String.valueOf(getRoomCapPenalty(true)));
         info.put("MinimumWorkingDays [p]",String.valueOf(getMinDaysPenalty(true)));
         info.put("CurriculumCompactness [p]",String.valueOf(getCompactPenalty(true)));
@@ -311,10 +295,8 @@ public class CttModel extends ItcModel {
         
         in.close();
         
-        for (Enumeration e=getCourses().elements();e.hasMoreElements();) {
-            CttCourse course = (CttCourse)e.nextElement();
+        for (CttCourse course: getCourses())
             course.init();
-        }
         
         return true;
     }
@@ -324,8 +306,7 @@ public class CttModel extends ItcModel {
      */
     public boolean save(File file) throws Exception {
         PrintWriter w = new PrintWriter(new FileWriter(file));
-        for (Enumeration e=getCourses().elements();e.hasMoreElements();) {
-            CttCourse course = (CttCourse)e.nextElement();
+        for (CttCourse course: getCourses()) {
             for (int i=0;i<course.getNrLectures();i++) {
                 CttLecture lecture = course.getLecture(i);
                 CttPlacement placement = (CttPlacement)lecture.getAssignment();
@@ -362,32 +343,26 @@ public class CttModel extends ItcModel {
     /**
      * Update penalty counters when a variable is unassigned 
      */
-    public void afterUnassigned(long iteration, Value value) {
-        super.afterUnassigned(iteration, value);
-        CttPlacement placement = (CttPlacement)value;
-        CttLecture lecture = (CttLecture)value.variable();
+    public void afterUnassigned(long iteration, CttPlacement placement) {
+        super.afterUnassigned(iteration, placement);
+        CttLecture lecture = placement.variable();
         iRoomPenalty -= placement.getRoomPenalty();
         iRoomCapPenalty -= placement.getRoomCapPenalty();
         iMinDaysPenalty -= placement.getMinDaysPenalty();
-        for (Enumeration e=lecture.getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        for (CttCurricula curricula: lecture.getCourse().getCurriculas())
             iCompactPenalty -= curricula.getCompactPenalty(placement);
-        }
     }
     
     /**
      * Update penalty counters when a variable is assigned 
      */
-    public void beforeAssigned(long iteration, Value value) {
-        super.beforeAssigned(iteration, value);
-        CttPlacement placement = (CttPlacement)value;
-        CttLecture lecture = (CttLecture)value.variable();
+    public void beforeAssigned(long iteration, CttPlacement placement) {
+        super.beforeAssigned(iteration, placement);
+        CttLecture lecture = placement.variable();
         iMinDaysPenalty += placement.getMinDaysPenalty();
         iRoomPenalty += placement.getRoomPenalty();
         iRoomCapPenalty += placement.getRoomCapPenalty();
-        for (Enumeration e=lecture.getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        for (CttCurricula curricula: lecture.getCourse().getCurriculas())
             iCompactPenalty += curricula.getCompactPenalty(placement);
-        }
     }
 }

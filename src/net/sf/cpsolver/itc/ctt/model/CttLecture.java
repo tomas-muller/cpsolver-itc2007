@@ -1,10 +1,9 @@
 package net.sf.cpsolver.itc.ctt.model;
 
-import java.util.Enumeration;
-import java.util.Vector;
+import java.util.ArrayList;
+import java.util.List;
 
 import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
@@ -18,12 +17,12 @@ import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,10 +30,10 @@ import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class CttLecture extends Variable implements Swapable {
+public class CttLecture extends Variable<CttLecture, CttPlacement> implements Swapable<CttLecture, CttPlacement> {
     private int iIdx;
     private CttCourse iCourse = null;
     
@@ -47,15 +46,11 @@ public class CttLecture extends Variable implements Swapable {
         iIdx = idx;
         setModel(course.getModel());
         iCourse = course;
-        for (Enumeration e=getCourse().getModel().getRooms().elements();e.hasMoreElements();) {
-            CttRoom room = (CttRoom)e.nextElement();
+        for (CttRoom room: getCourse().getModel().getRooms())
             room.getConstraint().addVariable(this);
-        }
         course.getTeacher().getConstraint().addVariable(this);
-        for (Enumeration e=getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        for (CttCurricula curricula: getCourse().getCurriculas())
             curricula.getConstraint().addVariable(this);
-        }
         setValues(computeValues());
         getModel().addVariable(this);
     }
@@ -68,13 +63,12 @@ public class CttLecture extends Variable implements Swapable {
     /** Domain: cartesian product of all available days and times (see {@link CttCourse#isAvailable(int, int)}) and 
      * all rooms.
      */ 
-    public Vector computeValues() {
-        Vector values = new Vector();
+    public List<CttPlacement> computeValues() {
+    	List<CttPlacement> values = new ArrayList<CttPlacement>();
         for (int d=0;d<getCourse().getModel().getNrDays();d++)
             for (int s=0;s<getCourse().getModel().getNrSlotsPerDay();s++) {
                 if (getCourse().isAvailable(d,s)) {
-                    for (Enumeration e=getCourse().getModel().getRooms().elements();e.hasMoreElements();) {
-                        CttRoom room = (CttRoom)e.nextElement();
+                    for (CttRoom room: getCourse().getModel().getRooms()) {
                         //if (room.getSize()<getCourse().getNrStudents()) continue;
                         values.add(new CttPlacement(this, room, d, s));
                     }
@@ -111,9 +105,7 @@ public class CttLecture extends Variable implements Swapable {
     }
     
     /** Compare two lectures, return the harder one. That is the one with more curriculas, or smaller domain/constraint ratio. */
-    public int compareTo(Object o) {
-        CttLecture l = (CttLecture)o;
-        
+    public int compareTo(CttLecture l) {
         if (getCourse().equals(l.getCourse()))
             return Double.compare(getIdx(),l.getIdx());
 
@@ -123,11 +115,11 @@ public class CttLecture extends Variable implements Swapable {
         cmp = Double.compare(((double)values().size())/constraints().size(), ((double)l.values().size())/l.constraints().size());
         if (cmp!=0) return cmp;
         
-        return super.compareTo(o);
+        return super.compareTo(l);
     }
     
     /** Find a swap with a placement of another lecture */
-    public Neighbour findSwap(Variable another) {
+    public Neighbour<CttLecture, CttPlacement> findSwap(CttLecture another) {
         CttLecture lecture = (CttLecture)another;
         if (getCourse().equals(lecture.getCourse())) return null;
         CttPlacement p1 = (CttPlacement)getAssignment();
@@ -139,19 +131,17 @@ public class CttLecture extends Variable implements Swapable {
             if (getCourse().getTeacher().getConstraint().getPlacement(p2.getDay(), p2.getSlot())!=null) return null;
             if (lecture.getCourse().getTeacher().getConstraint().getPlacement(p1.getDay(), p1.getSlot())!=null) return null;
         }
-        for (Enumeration e=getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula c = (CttCurricula)e.nextElement();
+        for (CttCurricula c: getCourse().getCurriculas()) {
             CttPlacement conflict = c.getConstraint().getPlacement(p2.getDay(), p2.getSlot());
             if (conflict!=null && !conflict.variable().equals(lecture)) return null;
         }
-        for (Enumeration e=lecture.getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula c = (CttCurricula)e.nextElement();
+        for (CttCurricula c: lecture.getCourse().getCurriculas()) {
             CttPlacement conflict = c.getConstraint().getPlacement(p1.getDay(), p1.getSlot());
             if (conflict!=null && !conflict.variable().equals(this)) return null;
         }
         CttPlacement np1 = new CttPlacement(this, p2.getRoom(), p2.getDay(), p2.getSlot());
         CttPlacement np2 = new CttPlacement(lecture, p1.getRoom(), p1.getDay(), p1.getSlot());
-        return new ItcLazySwap(np1, np2);
+        return new ItcLazySwap<CttLecture, CttPlacement>(np1, np2);
         /*
         double value = 0;
         //value += np1.extraPenalty() + np2.extraPenalty() - p1.extraPenalty() - p2.extraPenalty();
@@ -180,17 +170,14 @@ public class CttLecture extends Variable implements Swapable {
     
     /** A placement was assigned to this lecture -- notify appropriate constraints. Default implementation
      * is overridden to improve solver speed. */
-    public void assign(long iteration, Value value) {
+    public void assign(long iteration, CttPlacement value) {
         getModel().beforeAssigned(iteration,value);
         if (iValue!=null) unassign(iteration);
         if (value==null) return;
         iValue = value;
-        CttPlacement placement = (CttPlacement)iValue;
-        placement.getRoom().getConstraint().assigned(iteration, value);
-        for (Enumeration e=getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        value.getRoom().getConstraint().assigned(iteration, value);
+        for (CttCurricula curricula: getCourse().getCurriculas())
             curricula.getConstraint().assigned(iteration, value);
-        }
         getCourse().getTeacher().getConstraint().assigned(iteration, value);
         value.assigned(iteration);
         getModel().afterAssigned(iteration,value);
@@ -201,14 +188,11 @@ public class CttLecture extends Variable implements Swapable {
     public void unassign(long iteration) {
         if (iValue==null) return;
         getModel().beforeUnassigned(iteration,iValue);
-        Value oldValue = iValue;
+        CttPlacement oldValue = iValue;
         iValue = null;
-        CttPlacement placement = (CttPlacement)oldValue;
-        placement.getRoom().getConstraint().unassigned(iteration, oldValue);
-        for (Enumeration e=getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        oldValue.getRoom().getConstraint().unassigned(iteration, oldValue);
+        for (CttCurricula curricula: getCourse().getCurriculas())
             curricula.getConstraint().unassigned(iteration, oldValue);
-        }
         getCourse().getTeacher().getConstraint().unassigned(iteration, oldValue);
         getModel().afterUnassigned(iteration,oldValue);
     }

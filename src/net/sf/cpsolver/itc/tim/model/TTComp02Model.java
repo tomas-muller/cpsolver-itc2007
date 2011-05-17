@@ -6,12 +6,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.Vector;
 
-import net.sf.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -28,12 +27,12 @@ import net.sf.cpsolver.itc.ItcModel;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -41,14 +40,14 @@ import net.sf.cpsolver.itc.ItcModel;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class TTComp02Model extends ItcModel {
+public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
     /** Room constraints */
-    protected Vector iRooms = null;
+    protected List<TimRoom> iRooms = null;
     /** Student constraints */
-    protected Vector iStudents = null;
+    protected List<TimStudent> iStudents = null;
     /** Internal counter of objectives */
     private int iScore[] = new int[] {0,0,0};
     
@@ -86,22 +85,20 @@ public class TTComp02Model extends ItcModel {
         int nrFeatures = Integer.parseInt(stk.nextToken());
         int nrStudents = Integer.parseInt(stk.nextToken());
         
-        iRooms = new Vector();
+        iRooms = new ArrayList<TimRoom>();
         for (int i=0;i<nrRooms;i++)
             iRooms.add(new TimRoom(i, Integer.parseInt(in.readLine())));
         
         for (int i=0;i<nrEvents;i++)
             addVariable(new TimEvent(i));
         
-        iStudents = new Vector();
+        iStudents = new ArrayList<TimStudent>();
         for (int i=0;i<nrStudents;i++)
             iStudents.add(new TimStudent(i));
         
-        for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-            TimStudent student = (TimStudent)e.nextElement();
-            for (Enumeration f=variables().elements();f.hasMoreElements();) {
-                TimEvent event = (TimEvent)f.nextElement();
-                if (1==Integer.parseInt(in.readLine())) {
+        for (TimStudent student: iStudents) {
+            for (TimEvent event: variables()) {
+                if (1 == Integer.parseInt(in.readLine())) {
                     event.students().add(student);
                     student.addVariable(event);
                 }
@@ -118,10 +115,8 @@ public class TTComp02Model extends ItcModel {
             for (int j=0;j<nrFeatures;j++)
                 eventFeature[i][j] = (1==Integer.parseInt(in.readLine()));
         
-        for (Enumeration e=iRooms.elements();e.hasMoreElements();) {
-            TimRoom room = (TimRoom)e.nextElement();
-            for (Enumeration f=variables().elements();f.hasMoreElements();) {
-                TimEvent event = (TimEvent)f.nextElement();
+        for (TimRoom room: iRooms) {
+            for (TimEvent event: variables()) {
                 if (event.students().size()>room.size()) continue;
                 boolean hasAllFeatures = true;
                 for (int j=0;j<nrFeatures;j++) {
@@ -135,20 +130,14 @@ public class TTComp02Model extends ItcModel {
             }
         }
                 
-        for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-            TimStudent student = (TimStudent)e.nextElement();
+        for (TimStudent student: iStudents)
             addConstraint(student);
-        }
 
-        for (Enumeration e=iRooms.elements();e.hasMoreElements();) {
-            TimRoom room = (TimRoom)e.nextElement();
+        for (TimRoom room: iRooms)
             addConstraint(room);
-        }
         
-        for (Enumeration f=variables().elements();f.hasMoreElements();) {
-            TimEvent event = (TimEvent)f.nextElement();
+        for (TimEvent event: variables())
             event.init(isAllowProhibitedTime(),isAllowNoRoom());
-        }
         
         in.close();
         
@@ -156,12 +145,12 @@ public class TTComp02Model extends ItcModel {
     }
     
     /** List of room constraints */
-    public Vector rooms() {
+    public List<TimRoom> rooms() {
         return iRooms;
     }
     
     /** List of student constraints */
-    public Vector students() {
+    public List<TimStudent> students() {
         return iStudents;
     }
 
@@ -173,9 +162,8 @@ public class TTComp02Model extends ItcModel {
     public boolean save(File file) throws IOException {
         PrintWriter out = new PrintWriter(new FileWriter(file));
         
-        for (Enumeration f=variables().elements();f.hasMoreElements();) {
-            TimEvent event = (TimEvent)f.nextElement();
-            TimLocation location = (TimLocation)event.getAssignment();
+        for (TimEvent event: variables()) {
+            TimLocation location = event.getAssignment();
             out.println(location==null?"-1 -1":location.time()+" "+(location.room()==null?-1:location.room().getId()));
         }
         
@@ -192,10 +180,8 @@ public class TTComp02Model extends ItcModel {
      */
     public int score(boolean oneDay, boolean lastTime, boolean threeMore) {
         int score = 0;
-        for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-            TimStudent student = (TimStudent)e.nextElement();
+        for (TimStudent student: iStudents)
             score += student.score(oneDay, lastTime, threeMore);
-        }
         return score;
     }
     
@@ -222,8 +208,8 @@ public class TTComp02Model extends ItcModel {
     }
 
     /** Solution info -- add values of solutions criteria */
-    public Hashtable getInfo() {
-        Hashtable info = super.getInfo();
+    public Map<String, String> getInfo() {
+    	Map<String, String> info = super.getInfo();
         info.put("One time", String.valueOf(iScore[0]));
         info.put("Last time", String.valueOf(iScore[1]));
         info.put("Three or more times", String.valueOf(iScore[2]));
@@ -231,8 +217,8 @@ public class TTComp02Model extends ItcModel {
     }
     
     /** Solution info -- add values of solutions criteria (precise computation) */
-    public Hashtable getExtendedInfo() {
-        Hashtable info = super.getExtendedInfo();
+    public Map<String, String> getExtendedInfo() {
+    	Map<String, String> info = super.getExtendedInfo();
         info.put("One time [p]", String.valueOf(score(true,false,false)));
         info.put("Last time [p]", String.valueOf(score(false,true,false)));
         info.put("Three or more times [p]", String.valueOf(score(false,false,true)));
@@ -264,9 +250,8 @@ public class TTComp02Model extends ItcModel {
     /**
      * Update counters on unassignment of an event
      */
-    public void afterUnassigned(long iteration, Value value) {
-        super.afterUnassigned(iteration, value);
-        TimLocation location = (TimLocation)value;
+    public void afterUnassigned(long iteration, TimLocation location) {
+        super.afterUnassigned(iteration, location);
         int[] score = location.score();
         iScore[0] -= score[0];
         iScore[1] -= score[1];
@@ -276,10 +261,8 @@ public class TTComp02Model extends ItcModel {
     /**
      * Update counters on assignment of an event
      */
-    public void beforeAssigned(long iteration, Value value) {
-        super.beforeAssigned(iteration, value);
-        TimLocation location = (TimLocation)value;
-        TimEvent event = (TimEvent)location.variable();
+    public void beforeAssigned(long iteration, TimLocation location) {
+        super.beforeAssigned(iteration, location);
         int[] score = location.score();
         iScore[0] += score[0];
         iScore[1] += score[1];
@@ -290,17 +273,14 @@ public class TTComp02Model extends ItcModel {
     public boolean loadSolution(File file) throws IOException {
         BufferedReader in = new BufferedReader(new FileReader(file));
         
-        for (Enumeration f=variables().elements();f.hasMoreElements();) {
-            TimEvent event = (TimEvent)f.nextElement();
+        for (TimEvent event: variables()) {
             StringTokenizer s = new StringTokenizer(in.readLine()," ");
             int time = Integer.parseInt(s.nextToken());
             int roomId = Integer.parseInt(s.nextToken());
             if (time<0) continue;
             TimRoom room = null;
-            for (Enumeration g=rooms().elements();room==null && g.hasMoreElements();) {
-                TimRoom r = (TimRoom) g.nextElement();
-                if (r.getId()==roomId) room = r;
-            }
+            for (TimRoom r: rooms())
+                if (r.getId()==roomId) { room = r; break; }
             event.assign(0, new TimLocation(event, time, room));
         }
         

@@ -1,12 +1,10 @@
 package net.sf.cpsolver.itc.tim.model;
 
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
 import net.sf.cpsolver.ifs.model.Constraint;
 import net.sf.cpsolver.ifs.model.ConstraintListener;
-import net.sf.cpsolver.ifs.model.Value;
 
 
 /**
@@ -17,12 +15,12 @@ import net.sf.cpsolver.ifs.model.Value;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,10 +28,10 @@ import net.sf.cpsolver.ifs.model.Value;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class TimStudent extends Constraint implements Comparable {
+public class TimStudent extends Constraint<TimEvent, TimLocation> {
     private TimLocation iTable[] = new TimLocation[45];
 	
     /**
@@ -51,8 +49,7 @@ public class TimStudent extends Constraint implements Comparable {
 	/**
 	 * Compute conflicts: check whether this student is attending some other event at the given time
 	 */
-    public void computeConflicts(Value value, Set conflicts) {
-		TimLocation location = (TimLocation)value;
+    public void computeConflicts(TimLocation location, Set<TimLocation> conflicts) {
 		if (iTable[location.time()]!=null && !iTable[location.time()].variable().equals(location.variable()))
 			conflicts.add(iTable[location.time()]);
 	}
@@ -60,17 +57,14 @@ public class TimStudent extends Constraint implements Comparable {
     /**
      * Check for conflicts: check whether this student is attending some other event at the given time
      */
-    public boolean inConflict(Value value) {
-        TimLocation location = (TimLocation)value;
+    public boolean inConflict(TimLocation location) {
         return iTable[location.time()]!=null && !iTable[location.time()].variable().equals(location.variable());
     }
     
     /**
      * Two events that are attended by this student are consistent when assigned to different times
      */
-    public boolean isConsistent(Value value1, Value value2) {
-        TimLocation loc1 = (TimLocation)value1;
-        TimLocation loc2 = (TimLocation)value2;
+    public boolean isConsistent(TimLocation loc1, TimLocation loc2) {
         return loc1.time()==loc2.time(); 
     }
 	
@@ -107,22 +101,23 @@ public class TimStudent extends Constraint implements Comparable {
 	}
 
 	/** Update student assignment table */
-    public void assigned(long iteration, Value value) {
+    public void assigned(long iteration, TimLocation value) {
         //super.assigned(iteration, value);
         if (iTable[((TimLocation)value).time()]!=null) {
-            HashSet confs = new HashSet(); confs.add(iTable[((TimLocation)value).time()]);
+            Set<TimLocation> confs = new HashSet<TimLocation>();
+            confs.add(iTable[((TimLocation)value).time()]);
             iTable[((TimLocation)value).time()].variable().unassign(iteration);
-            iTable[((TimLocation)value).time()]=(TimLocation)value;
+            iTable[((TimLocation)value).time()]=value;
             if (iConstraintListeners!=null)
-                for (Enumeration e=iConstraintListeners.elements();e.hasMoreElements();)
-                    ((ConstraintListener)e.nextElement()).constraintAfterAssigned(iteration, this, value, confs);
+                for (ConstraintListener<TimLocation> listener: iConstraintListeners)
+                	listener.constraintAfterAssigned(iteration, this, value, confs);
         } else {
             iTable[((TimLocation)value).time()]=(TimLocation)value;
         }
     }
         
     /** Update student assignment table */
-    public void unassigned(long iteration, Value value) {
+    public void unassigned(long iteration, TimLocation value) {
         //super.unassigned(iteration, value);
         iTable[((TimLocation)value).time()]=null;
     }
@@ -138,7 +133,7 @@ public class TimStudent extends Constraint implements Comparable {
     }
     
     /** Compare two students using their ids */
-    public int compareTo(Object o) {
+    public int compareTo(Constraint<TimEvent, TimLocation> o) {
         return toString().compareTo(o.toString());
     }
 }

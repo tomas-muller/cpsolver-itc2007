@@ -7,8 +7,9 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.StringTokenizer;
-import java.util.Vector;
 
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.FileAppender;
@@ -78,12 +79,12 @@ import net.sf.cpsolver.itc.test.ItcRace.RaceTestInstance;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -91,8 +92,8 @@ import net.sf.cpsolver.itc.test.ItcRace.RaceTestInstance;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class ItcCalibra {
     private static Logger sLog = Logger.getLogger(ItcCalibra.class);
@@ -146,10 +147,10 @@ public class ItcCalibra {
     /** Perform the test */
     public void test() throws Exception {
         RaceContext cx = new RaceContext(iProperties, "Calibra");
-        Vector instances = new Vector();
+        List<RaceTestInstance> instances = new ArrayList<RaceTestInstance>();
         for (int a=0;a<cx.getNrAttemts();a++) {
             for (int i=0;i<cx.getNrInstances();i++) {
-                instances.addElement(new RaceTestInstance(cx,a,i,iProperties));
+                instances.add(new RaceTestInstance(cx,a,i,iProperties));
             }
         }
         ItcTestClient.test(instances);

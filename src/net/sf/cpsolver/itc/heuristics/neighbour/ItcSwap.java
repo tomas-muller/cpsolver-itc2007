@@ -11,12 +11,12 @@ import net.sf.cpsolver.ifs.model.Variable;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,11 +24,11 @@ import net.sf.cpsolver.ifs.model.Variable;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ItcSwap extends Neighbour {
-    private Value iV1, iV2;
+public class ItcSwap<V extends Variable<V, T>, T extends Value<V, T>> extends Neighbour<V, T> {
+    private T iV1, iV2;
     private double iValue;
     
     /**
@@ -37,7 +37,7 @@ public class ItcSwap extends Neighbour {
      * @param v2 second variable
      * @param value change of overall solution value
      */
-    public ItcSwap(Value v1, Value v2, double value) {
+    public ItcSwap(T v1, T v2, double value) {
         iV1 = v1;
         iV2 = v2;
         iValue = value;
@@ -49,9 +49,9 @@ public class ItcSwap extends Neighbour {
     }
     
     /** First variable */
-    public Value firstValue() { return iV1; }
+    public T firstValue() { return iV1; }
     /** Second variable */
-    public Value secondValue() { return iV2; }
+    public T secondValue() { return iV2; }
     
     /** Perform assignment */
     public void assign(long iteration) {
@@ -81,17 +81,17 @@ public class ItcSwap extends Neighbour {
     /** Compare two swap neighbours for equality */
     public boolean equals(Object o) {
         if (o==null || !(o instanceof ItcSwap)) return false;
-        ItcSwap s = (ItcSwap)o;
+        ItcSwap<?,?> s = (ItcSwap<?,?>)o;
         return (iV1.equals(s.iV1) && iV2.equals(s.iV2)) || (iV1.equals(s.iV2) && iV2.equals(s.iV1));
     }
     
     /**
      * Find a swap of two variables (if possible). To be implemented by a {@link Variable}.
      */
-    public static interface Swapable {
+    public static interface Swapable<V extends Variable<V, T>, T extends Value<V, T>>{
         /**
          * Find a swap this variable with the given one (return null when no swap is found).
          */
-        public Neighbour findSwap(Variable another);
+        public Neighbour<V,T> findSwap(V another);
     }
 }

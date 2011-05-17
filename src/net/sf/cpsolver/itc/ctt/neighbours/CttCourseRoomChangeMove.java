@@ -1,7 +1,5 @@
 package net.sf.cpsolver.itc.ctt.neighbours;
 
-import org.apache.log4j.Logger;
-
 import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
 import net.sf.cpsolver.ifs.model.Neighbour;
 import net.sf.cpsolver.ifs.solution.Solution;
@@ -25,12 +23,12 @@ import net.sf.cpsolver.itc.ctt.model.CttRoom;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -38,19 +36,17 @@ import net.sf.cpsolver.itc.ctt.model.CttRoom;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class CttCourseRoomChangeMove implements NeighbourSelection {
-    private static Logger sLog = Logger.getLogger(CttCourseRoomChangeMove.class);
-    
+public class CttCourseRoomChangeMove implements NeighbourSelection<CttLecture, CttPlacement> {
     /** Constructor */
     public CttCourseRoomChangeMove(DataProperties properties) {}
     /** Initialization */
-    public void init(Solver solver) {}
+    public void init(Solver<CttLecture, CttPlacement> solver) {}
 
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
+    public Neighbour<CttLecture, CttPlacement> selectNeighbour(Solution<CttLecture, CttPlacement> solution) {
         CttModel model = (CttModel)solution.getModel();
         CttCourse course = (CttCourse)ToolBox.random(model.getCourses());
         CttRoom room = (CttRoom)ToolBox.random(model.getRooms());
@@ -62,7 +58,7 @@ public class CttCourseRoomChangeMove implements NeighbourSelection {
      * If there is already some other lecture in the room, 
      * it is reassinged to the room of the moving lecture.
      */ 
-    public static class CttCourseRoomNeighbour extends Neighbour {
+    public static class CttCourseRoomNeighbour extends Neighbour<CttLecture, CttPlacement> {
         private CttCourse iCourse;
         private CttRoom iRoom;
         private double iValue;

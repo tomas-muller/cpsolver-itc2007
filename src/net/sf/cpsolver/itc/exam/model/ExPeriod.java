@@ -8,12 +8,12 @@ package net.sf.cpsolver.itc.exam.model;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,10 +21,10 @@ package net.sf.cpsolver.itc.exam.model;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExPeriod implements Comparable {
+public class ExPeriod implements Comparable<ExPeriod> {
     private int iIndex = -1;
     private String iTimeStr;
     private String iDayStr;
@@ -99,7 +99,7 @@ public class ExPeriod implements Comparable {
         return getIndex()==((ExPeriod)o).getIndex();
     }
     /** Compare two periods on index */
-    public int compareTo(Object o) {
-        return Double.compare(getIndex(), ((ExPeriod)o).getIndex());
+    public int compareTo(ExPeriod p) {
+        return Double.compare(getIndex(), p.getIndex());
     }
 }

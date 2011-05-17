@@ -1,13 +1,11 @@
 package net.sf.cpsolver.itc.exam.model;
 
-import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 
 import net.sf.cpsolver.ifs.model.Constraint;
-import net.sf.cpsolver.ifs.model.Value;
 
 /**
  * Representation of a student. Either {@link ExStudentHard} or {@link ExStudentSoft} is to be used.
@@ -17,12 +15,12 @@ import net.sf.cpsolver.ifs.model.Value;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,10 +28,10 @@ import net.sf.cpsolver.ifs.model.Value;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public abstract class ExStudent extends Constraint {
+public abstract class ExStudent extends Constraint<ExExam, ExPlacement> {
     protected static Logger sLog = Logger.getLogger(ExStudent.class);
     private Boolean iHasSamePeriodExams = null;
 
@@ -55,16 +53,16 @@ public abstract class ExStudent extends Constraint {
     }
     
     /** List of exams that this student has at the given period */
-    public abstract Set getExams(int period);
+    public abstract Set<ExExam> getExams(int period);
     /** List of exams that this student has at the given period */
-    public Set getExams(ExPeriod period) {
+    public Set<ExExam> getExams(ExPeriod period) {
         return getExams(period.getIndex());
     }
     /** List of exams that this student has at the given period */
     public String getExamStr(ExPeriod period) {
         StringBuffer sb = new StringBuffer();
-        for (Iterator i=getExams(period.getIndex()).iterator();i.hasNext();) {
-            sb.append(((ExExam)i.next()).getId());
+        for (Iterator<ExExam> i=getExams(period.getIndex()).iterator();i.hasNext();) {
+            sb.append(i.next().getId());
             sb.append(i.hasNext()?",":"");
         }
         return sb.toString();
@@ -98,10 +96,8 @@ public abstract class ExStudent extends Constraint {
      */
     public boolean hasSamePeriodExams() {
         if (iHasSamePeriodExams==null) {
-            for (Enumeration e=variables().elements();e.hasMoreElements();) {
-                ExExam exam = (ExExam)e.nextElement();
-                for (Iterator i=exam.getSamePeriodExams().iterator();i.hasNext();) {
-                    ExExam spex = (ExExam)i.next();
+            for (ExExam exam: variables()) {
+                for (ExExam spex: exam.getSamePeriodExams()) {
                     if (variables().contains(spex)) {
                         iHasSamePeriodExams = Boolean.TRUE; 
                         return true;
@@ -115,11 +111,9 @@ public abstract class ExStudent extends Constraint {
     }
     
     /** Two exams are in conflict if both attended by this student and placed at the same period */
-    public boolean isConsistent(Value value1, Value value2) {
-        ExPlacement p1 = (ExPlacement)value1;
-        ExPlacement p2 = (ExPlacement)value2;
-        ExExam ex1 = (ExExam)value1.variable();
-        ExExam ex2 = (ExExam)value2.variable();
+    public boolean isConsistent(ExPlacement p1, ExPlacement p2) {
+        ExExam ex1 = p1.variable();
+        ExExam ex2 = p2.variable();
         if (ex1.isSamePeriodExam(ex2)) return true;
         return (p1.getPeriodIndex()!=p2.getPeriodIndex()); 
     }
@@ -198,7 +192,7 @@ public abstract class ExStudent extends Constraint {
     }
     
     /** Update student assignments */
-    public abstract void afterAssigned(long iteration, Value value);
+    public abstract void afterAssigned(long iteration, ExPlacement value);
     /** Update student assignments */
-    public abstract void afterUnassigned(long iteration, Value value);
+    public abstract void afterUnassigned(long iteration, ExPlacement value);
 }

@@ -1,12 +1,10 @@
 package net.sf.cpsolver.itc.ctt.model;
 
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
 import net.sf.cpsolver.ifs.model.Constraint;
 import net.sf.cpsolver.ifs.model.ConstraintListener;
-import net.sf.cpsolver.ifs.model.Value;
 
 /**
  * Representation of a room. Two lectures cannot be placed into the same room 
@@ -16,12 +14,12 @@ import net.sf.cpsolver.ifs.model.Value;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -29,8 +27,8 @@ import net.sf.cpsolver.ifs.model.Value;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class CttRoom {
     private CttModel iModel;
@@ -91,7 +89,7 @@ public class CttRoom {
     /** Room constraint. This hard constraint ensures that no two lectures
      * are placed into this room at the same time. 
      */ 
-    public class RoomConstraint extends Constraint {
+    public class RoomConstraint extends Constraint<CttLecture, CttPlacement> {
         public CttPlacement[][] iPlacement;
         
         /** Constructor */
@@ -109,10 +107,9 @@ public class CttRoom {
          * Compute conflicts, i.e., placements of another lecture that is using 
          * this room at the time of the given placement (if any).
          */
-        public void computeConflicts(Value value, Set conflicts) {
-            CttPlacement p = (CttPlacement)value;
+        public void computeConflicts(CttPlacement p, Set<CttPlacement> conflicts) {
             if (!p.getRoom().equals(CttRoom.this)) return; 
-            if (iPlacement[p.getDay()][p.getSlot()]!=null && !iPlacement[p.getDay()][p.getSlot()].variable().equals(value.variable()))
+            if (iPlacement[p.getDay()][p.getSlot()]!=null && !iPlacement[p.getDay()][p.getSlot()].variable().equals(p.variable()))
                 conflicts.add(iPlacement[p.getDay()][p.getSlot()]);
         }
         
@@ -120,36 +117,32 @@ public class CttRoom {
          * Check for conflicts, i.e., true, if there is another lecture that is using 
          * this room at the time of the given placement.
          */
-        public boolean inConflict(Value value) {
-            CttPlacement p = (CttPlacement)value;
+        public boolean inConflict(CttPlacement p) {
             if (!p.getRoom().equals(CttRoom.this)) return false; 
-            return iPlacement[p.getDay()][p.getSlot()]!=null && !iPlacement[p.getDay()][p.getSlot()].variable().equals(value.variable());
+            return iPlacement[p.getDay()][p.getSlot()]!=null && !iPlacement[p.getDay()][p.getSlot()].variable().equals(p.variable());
         }
         
         /**
          * Two lectures that are using this room are consistent if placed at 
          * different day or time.
          */
-        public boolean isConsistent(Value value1, Value value2) {
-            CttPlacement p1 = (CttPlacement)value1;
-            CttPlacement p2 = (CttPlacement)value2;
+        public boolean isConsistent(CttPlacement p1, CttPlacement p2) {
             if (!p1.getRoom().equals(CttRoom.this)) return true;
             if (!p2.getRoom().equals(CttRoom.this)) return true;
             return p1.getDay()!=p2.getDay() || p1.getSlot()!=p2.getSlot();
         }
         
         /** Update placement of lectures into this room */
-        public void assigned(long iteration, Value value) {
+        public void assigned(long iteration, CttPlacement p) {
             //super.assigned(iteration, value);
-            CttPlacement p = (CttPlacement)value;
             if (p.getRoom().equals(CttRoom.this)) {
                 if (iPlacement[p.getDay()][p.getSlot()]!=null) {
-                    HashSet confs = new HashSet(); confs.add(iPlacement[p.getDay()][p.getSlot()]);
+                    Set<CttPlacement> confs = new HashSet<CttPlacement>(); confs.add(iPlacement[p.getDay()][p.getSlot()]);
                     iPlacement[p.getDay()][p.getSlot()].variable().unassign(iteration);
                     iPlacement[p.getDay()][p.getSlot()] = p;
                     if (iConstraintListeners!=null)
-                        for (Enumeration e=iConstraintListeners.elements();e.hasMoreElements();)
-                            ((ConstraintListener)e.nextElement()).constraintAfterAssigned(iteration, this, value, confs);
+                        for (ConstraintListener<CttPlacement> listener: iConstraintListeners)
+                            listener.constraintAfterAssigned(iteration, this, p, confs);
                 } else {
                     iPlacement[p.getDay()][p.getSlot()] = p;
                 }
@@ -157,9 +150,8 @@ public class CttRoom {
         }
         
         /** Update placement of lectures into this room */
-        public void unassigned(long iteration, Value value) {
+        public void unassigned(long iteration, CttPlacement p) {
             //super.unassigned(iteration, value);
-            CttPlacement p = (CttPlacement)value;
             if (p.getRoom().equals(CttRoom.this))
                 iPlacement[p.getDay()][p.getSlot()] = null;
         }

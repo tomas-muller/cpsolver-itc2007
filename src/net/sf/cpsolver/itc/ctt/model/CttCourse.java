@@ -1,7 +1,9 @@
 package net.sf.cpsolver.itc.ctt.model;
 
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Vector;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Representation of a course. A course consists of a teacher (see {@link CttTeacher}, given number of lectures (see {@link CttLecture}),
@@ -11,12 +13,12 @@ import java.util.Vector;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,8 +26,8 @@ import java.util.Vector;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class CttCourse {
     private CttModel iModel = null;
@@ -36,7 +38,7 @@ public class CttCourse {
     private int iNrStudents = 0;
     private boolean[][] iAvailable = null;
     private CttLecture[] iLectures = null;
-    private Vector iCurriculas = new Vector();
+    private List<CttCurricula> iCurriculas = new ArrayList<CttCurricula>();
     
     /**
      * Constructor
@@ -161,8 +163,8 @@ public class CttCourse {
     /**
      * Compute all rooms into which lectures of this course are assigned.
      */
-    public HashSet getRooms() {
-        HashSet rooms = new HashSet();
+    public Set<CttRoom> getRooms() {
+    	Set<CttRoom> rooms = new HashSet<CttRoom>();
         for (int i=0;i<iLectures.length;i++) {
             CttPlacement p = (CttPlacement)iLectures[i].getAssignment();
             if (p!=null) rooms.add(p.getRoom());
@@ -173,7 +175,7 @@ public class CttCourse {
     /**
      * Return curriculas associated with this course.
      */
-    public Vector getCurriculas() {
+    public List<CttCurricula> getCurriculas() {
         return iCurriculas;
     }
 }

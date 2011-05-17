@@ -1,9 +1,7 @@
 package net.sf.cpsolver.itc.ctt.neighbours;
 
-import java.util.Enumeration;
 import java.util.HashSet;
-
-import org.apache.log4j.Logger;
+import java.util.Set;
 
 import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
 import net.sf.cpsolver.ifs.model.Neighbour;
@@ -30,12 +28,12 @@ import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -43,29 +41,28 @@ import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class CttCourseMinDaysMove implements NeighbourSelection, HillClimberSelection {
-    private static Logger sLog = Logger.getLogger(CttCourseMinDaysMove.class);
+public class CttCourseMinDaysMove implements NeighbourSelection<CttLecture, CttPlacement>, HillClimberSelection {
     private boolean iHC = false;
 
     /** Constructor */
     public CttCourseMinDaysMove(DataProperties properties) {}
     /** Initialization */
-    public void init(Solver solver) {}
+    public void init(Solver<CttLecture, CttPlacement> solver) {}
     /** Set hill-climber mode (worsening moves are skipped) */
     public void setHcMode(boolean hcMode) { iHC = hcMode; }
 
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
+    public Neighbour<CttLecture, CttPlacement> selectNeighbour(Solution<CttLecture, CttPlacement> solution) {
         CttModel model = (CttModel)solution.getModel();
         if (model.getMinDaysPenalty(false)<=0) return null;
         int cx = ToolBox.random(model.getCourses().size());
         for (int c=0;c<model.getCourses().size();c++) {
-            CttCourse course = (CttCourse)model.getCourses().elementAt((c+cx)%model.getCourses().size());
+            CttCourse course = model.getCourses().get((c+cx)%model.getCourses().size());
             int days = 0, nrDays = 0;
-            HashSet adepts = new HashSet();
+            Set<Integer> adepts = new HashSet<Integer>();
             for (int i=0;i<course.getNrLectures();i++) {
                 if (course.getLecture(i).getAssignment()==null) {
                     nrDays++;
@@ -83,11 +80,11 @@ public class CttCourseMinDaysMove implements NeighbourSelection, HillClimberSele
         return null;
     }
     
-    private Neighbour findNeighbour(CttCourse course, int days, HashSet adepts) {
+    private Neighbour<CttLecture, CttPlacement> findNeighbour(CttCourse course, int days, Set<Integer> adepts) {
         int lx = ToolBox.random(course.getNrLectures());
         for (int l=0;l<course.getNrLectures();l++) {
-            CttLecture lecture = (CttLecture)course.getLecture((l+lx)%course.getNrLectures());
-            CttPlacement placement = (CttPlacement)lecture.getAssignment();
+            CttLecture lecture = course.getLecture((l+lx)%course.getNrLectures());
+            CttPlacement placement = lecture.getAssignment();
             if (placement==null || !adepts.contains(new Integer(placement.getDay()))) continue;
             int minDayPenalty = placement.getMinDaysPenalty();
             int slot = placement.getSlot();
@@ -100,20 +97,19 @@ public class CttCourseMinDaysMove implements NeighbourSelection, HillClimberSele
                 int minDayChange = placement.getMinDaysPenalty(day) - minDayPenalty;
                 if (minDayChange>=0) continue;
                 if (lecture.getCourse().getTeacher().getConstraint().getPlacement(day,slot)!=null) continue;
-                for (Enumeration e=lecture.getCourse().getCurriculas().elements();e.hasMoreElements();) {
-                    CttCurricula curricula = (CttCurricula)e.nextElement();
+                for (CttCurricula curricula: lecture.getCourse().getCurriculas()) {
                     if (curricula.getConstraint().getPlacement(day,slot)!=null) continue day;
                 }
-                if ((CttPlacement)originalRoom.getConstraint().getPlacement(day, slot)==null) {
-                    ItcSimpleNeighbour n = new ItcSimpleNeighbour(lecture, new CttPlacement(lecture, originalRoom, day, slot));
+                if (originalRoom.getConstraint().getPlacement(day, slot)==null) {
+                    ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, new CttPlacement(lecture, originalRoom, day, slot));
                     if (!iHC || n.value()<=0) return n;
                 }
                 int rx = ToolBox.random(course.getModel().getRooms().size());
                 for (int r=0;r<course.getModel().getRooms().size();r++) {
-                    CttRoom room = (CttRoom)course.getModel().getRooms().elementAt((r+rx)%course.getModel().getRooms().size());
+                    CttRoom room = course.getModel().getRooms().get((r+rx)%course.getModel().getRooms().size());
                     if (room.getSize()<course.getNrStudents()) continue;
-                    if ((CttPlacement)room.getConstraint().getPlacement(day, slot)==null) { 
-                        ItcSimpleNeighbour n = new ItcSimpleNeighbour(lecture, new CttPlacement(lecture, room, day, slot));
+                    if (room.getConstraint().getPlacement(day, slot)==null) { 
+                        ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, new CttPlacement(lecture, room, day, slot));
                         if (!iHC || n.value()<=0) return n;
                     }
                 }

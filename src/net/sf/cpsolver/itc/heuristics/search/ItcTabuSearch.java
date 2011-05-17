@@ -1,11 +1,10 @@
 package net.sf.cpsolver.itc.heuristics.search;
 
-import java.util.Enumeration;
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Vector;
 
 import org.apache.log4j.Logger;
 
@@ -55,12 +54,12 @@ import net.sf.cpsolver.ifs.util.ToolBox;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -68,17 +67,16 @@ import net.sf.cpsolver.ifs.util.ToolBox;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
+public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T>, ValueSelection<V,T> {
     private static Logger sLog = Logger.getLogger(ItcTabuSearch.class);
-    private ConflictStatistics iStat = null;
+    private ConflictStatistics<V,T> iStat = null;
 
     private long iFirstIteration = -1;
     private long iMaxIdleIterations = 10000;
 
-    private int iTabuSize = 20;
     private int iTabuMinSize = 20;
     private int iTabuMaxSize = 200;
     private TabuList iTabu = null;
@@ -106,12 +104,10 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
     }
     
     /** Initialization */
-    public void init(Solver solver) {
-        for (Enumeration i = solver.getExtensions().elements(); i.hasMoreElements();) {
-            Extension extension = (Extension)i.nextElement();
+    public void init(Solver<V,T> solver) {
+        for (Extension<V, T> extension: solver.getExtensions())
             if (extension instanceof ConflictStatistics)
-                iStat = (ConflictStatistics)extension;
-        }
+                iStat = (ConflictStatistics<V,T>)extension;
     }
     
     /**
@@ -119,14 +115,14 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
      * @param value given value (to be assigned to its variable)
      * @return value or {@link TabuElement#tabuElement()} when the given value implements {@link TabuElement} interface 
      */
-    public Object tabuElement(Value value) {
+    public Object tabuElement(T value) {
         return (value instanceof TabuElement ? ((TabuElement)value).tabuElement() : value);
     }
     
     /**
      * Neighbor selection 
      */
-    public Neighbour selectNeighbour(Solution solution) {
+    public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
         if (iFirstIteration<0)
             iFirstIteration = solution.getIteration();
         long idle = solution.getIteration()-Math.max(iFirstIteration,solution.getBestIteration()); 
@@ -145,21 +141,18 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
         }
         
         boolean acceptConflicts = solution.getModel().getBestUnassignedVariables()>0;
-        Model model = solution.getModel();
+        Model<V,T> model = solution.getModel();
         double bestEval = 0.0;
-        Vector best = null;
-        for (Enumeration e=model.variables().elements();e.hasMoreElements();) {
-            Variable variable = (Variable)e.nextElement();
-            Value assigned = variable.getAssignment();
+        List<T> best = null;
+        for (V variable: model.variables()) {
+            T assigned = variable.getAssignment();
             double assignedVal = (assigned==null?iConflictWeight:iValueWeight*assigned.toDouble());
-            for (Enumeration f=variable.values().elements();f.hasMoreElements();) {
-                Value value = (Value)f.nextElement();
+            for (T value: variable.values()) {
                 if (value.equals(assigned)) continue;
                 double eval = iValueWeight*value.toDouble() - assignedVal;
                 if (acceptConflicts) {
-                    Set conflicts = model.conflictValues(value);
-                    for (Iterator i=conflicts.iterator();i.hasNext();) {
-                        Value conflict = (Value)i.next();
+                    Set<T> conflicts = model.conflictValues(value);
+                    for (T conflict: conflicts) {
                         eval -= iValueWeight*conflict.toDouble();
                         eval += iConflictWeight * (1.0+(iStat==null?0.0:iStat.countRemovals(solution.getIteration(), conflict, value)));
                     }
@@ -173,7 +166,7 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
                 }
                 if (best==null || bestEval>eval) {
                     if (best==null)
-                        best = new Vector();
+                        best = new ArrayList<T>();
                     else
                         best.clear();
                     best.add(value);
@@ -190,10 +183,10 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
             if (iTabu!=null) iTabu.clear();
             return null;
         }
-        Value bestVal = (Value)ToolBox.random(best);
+        T bestVal = ToolBox.random(best);
         
         if (sLog.isDebugEnabled()) {
-            Set conflicts = model.conflictValues(bestVal);
+            Set<T> conflicts = model.conflictValues(bestVal);
             double wconf = (iStat==null?0.0:iStat.countRemovals(solution.getIteration(), conflicts, bestVal));
             sLog.debug("  [tabu] "+bestVal+" ("+(bestVal.variable().getAssignment()==null?"":"was="+bestVal.variable().getAssignment()+", ")+"val="+bestEval+(conflicts.isEmpty()?"":", conf="+(wconf+conflicts.size())+"/"+conflicts)+")");
         }
@@ -201,13 +194,13 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
         if (iTabu!=null) 
             iTabu.add(tabuElement(bestVal));
 
-        return new SimpleNeighbour(bestVal.variable(),bestVal);        
+        return new SimpleNeighbour<V,T>(bestVal.variable(), bestVal);        
     }
     
     /**
      * Value selection 
      */
-    public Value selectValue(Solution solution, Variable variable) {
+    public T selectValue(Solution<V,T> solution, V variable) {
         if (iFirstIteration<0)
             iFirstIteration = solution.getIteration();
         long idle = solution.getIteration()-Math.max(iFirstIteration,solution.getBestIteration()); 
@@ -225,20 +218,18 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
             }
         }
 
-        Model model = solution.getModel();
+        Model<V,T> model = solution.getModel();
         double bestEval = 0.0;
-        Vector best = null;
+        List<T> best = null;
 
-        Value assigned = variable.getAssignment();
+        T assigned = variable.getAssignment();
         //double assignedVal = (assigned==null?-iConflictWeight:iValueWeight*assigned.toDouble());
         double assignedVal = (assigned==null?iConflictWeight:iValueWeight*assigned.toDouble());
-        for (Enumeration f=variable.values().elements();f.hasMoreElements();) {
-            Value value = (Value)f.nextElement();
+        for (T value: variable.values()) {
             if (value.equals(assigned)) continue;
-            Set conflicts = model.conflictValues(value);
+            Set<T> conflicts = model.conflictValues(value);
             double eval = iValueWeight*value.toDouble() - assignedVal;
-            for (Iterator i=conflicts.iterator();i.hasNext();) {
-                Value conflict = (Value)i.next();
+            for (T conflict: conflicts) {
                 eval -= iValueWeight*conflict.toDouble();
                 eval += iConflictWeight * (1.0+(iStat==null?0.0:iStat.countRemovals(solution.getIteration(), conflict, value)));
             }
@@ -250,7 +241,7 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
 		    }
             if (best==null || bestEval>eval) {
                 if (best==null)
-                    best = new Vector();
+                    best = new ArrayList<T>();
                 else
                     best.clear();
                 best.add(value);
@@ -261,10 +252,10 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
         }
         
         if (best==null) return null;
-        Value bestVal = (Value)ToolBox.random(best);
+        T bestVal = ToolBox.random(best);
         
         if (sLog.isDebugEnabled()) {
-            Set conflicts = model.conflictValues(bestVal);
+            Set<T> conflicts = model.conflictValues(bestVal);
             double wconf = (iStat==null?0.0:iStat.countRemovals(solution.getIteration(), conflicts, bestVal));
             sLog.debug("  [tabu] "+bestVal+" ("+(bestVal.variable().getAssignment()==null?"":"was="+bestVal.variable().getAssignment()+", ")+"val="+bestEval+(conflicts.isEmpty()?"":", conf="+(wconf+conflicts.size())+"/"+conflicts)+")");
         }
@@ -277,7 +268,7 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
     
     /** Tabu-list */
     private static class TabuList {
-        private HashSet iList = new HashSet();
+        private Set<TabuItem> iList = new HashSet<TabuItem>();
         private int iSize;
         private long iIteration = 0;
         
@@ -318,8 +309,7 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
         
         public Object removeOldest() {
             TabuItem oldest = null;
-            for (Iterator i=iList.iterator();i.hasNext();) {
-                TabuItem element = (TabuItem)i.next();
+            for (TabuItem element: iList) {
                 if (oldest==null || oldest.getIteration()>element.getIteration())
                     oldest = element;
             }
@@ -329,12 +319,12 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
         }
         
         public String toString() {
-            return new TreeSet(iList).toString();
+            return new TreeSet<TabuItem>(iList).toString();
         }
     }
 
     /** Tabu item (an item in {@link TabuList}) */
-    private static class TabuItem implements Comparable {
+    private static class TabuItem implements Comparable<TabuItem> {
         private Object iObject;
         private long iIteration;
         public TabuItem(Object object, long iteration) {
@@ -353,8 +343,8 @@ public class ItcTabuSearch implements NeighbourSelection, ValueSelection {
         public int hashCode() {
             return getObject().hashCode();
         }
-        public int compareTo(Object o) {
-            return Double.compare(getIteration(), ((TabuItem)o).getIteration());
+        public int compareTo(TabuItem o) {
+            return Double.compare(getIteration(), o.getIteration());
         }
         public String toString() {
             return getObject().toString();

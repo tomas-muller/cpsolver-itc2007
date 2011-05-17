@@ -3,8 +3,6 @@ package net.sf.cpsolver.itc.exam.model;
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.model.Value;
-
 /**
  * Representation of a student. Direct student conflicts are allowed
  * (Problem propery Exam.AllowDirectConflict is true).
@@ -13,12 +11,12 @@ import net.sf.cpsolver.ifs.model.Value;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,11 +24,11 @@ import net.sf.cpsolver.ifs.model.Value;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class ExStudentSoft extends ExStudent {
-    private HashSet[] iExams = null;
+    private Set<ExExam>[] iExams = null;
     private int[] iNrExams = null;
     
     /**
@@ -44,13 +42,14 @@ public class ExStudentSoft extends ExStudent {
     /**
      * Initialization
      */
-    public void init() {
+    @SuppressWarnings("unchecked")
+	public void init() {
         super.init();
         ExModel m = (ExModel)getModel();
         iExams = new HashSet[m.getNrPeriods()];
         iNrExams = new int[m.getNrPeriods()];
         for (int i=0;i<m.getNrPeriods();i++) {
-            iExams[i]=new HashSet();
+            iExams[i]=new HashSet<ExExam>();
             iNrExams[i]=0;
         }
     }
@@ -58,13 +57,13 @@ public class ExStudentSoft extends ExStudent {
     /**
      * No conflicts
      */
-    public void computeConflicts(Value value, Set conflicts) {
+    public void computeConflicts(ExPlacement value, Set<ExPlacement> conflicts) {
     }
     
     /**
      * No conflicts
      */
-    public boolean inConflict(Value value) {
+    public boolean inConflict(ExPlacement value) {
         return false;
     }
     
@@ -78,8 +77,7 @@ public class ExStudentSoft extends ExStudent {
     /**
      * Update assignment table
      */
-    public void afterAssigned(long iteration, Value value) {
-        ExPlacement p = (ExPlacement)value;
+    public void afterAssigned(long iteration, ExPlacement p) {
         if (iExams[p.getPeriodIndex()].add(p.variable()))
             iNrExams[p.getPeriodIndex()]++;
     }
@@ -87,14 +85,13 @@ public class ExStudentSoft extends ExStudent {
     /**
      * Update assignment table
      */
-    public void afterUnassigned(long iteration, Value value) {
-        ExPlacement p = (ExPlacement)value;
+    public void afterUnassigned(long iteration, ExPlacement p) {
         if (iExams[p.getPeriodIndex()].remove(p.variable()))
             iNrExams[p.getPeriodIndex()]--;
     }
     
     /** List of exams that this student has at the given period */
-    public Set getExams(int period) {
+    public Set<ExExam> getExams(int period) {
         return iExams[period];
     }
     /** True, if this student has one or more exams at the given period */
@@ -116,10 +113,10 @@ public class ExStudentSoft extends ExStudent {
         return iExams[period].size()-(iExams[period].contains(exclude)?1:0);
     }
     
-    public void assigned(long iteration, Value value) {
+    public void assigned(long iteration, ExPlacement value) {
     }
         
-    public void unassigned(long iteration, Value value) {
+    public void unassigned(long iteration, ExPlacement value) {
     }    
     
 }

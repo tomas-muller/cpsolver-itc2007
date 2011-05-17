@@ -6,14 +6,12 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.Vector;
 
 import org.apache.log4j.Logger;
-
-import net.sf.cpsolver.ifs.model.Value;
 
 /**
  * Representation of Post Enrollment based Course Timetabling (tim) problem model.
@@ -22,12 +20,12 @@ import net.sf.cpsolver.ifs.model.Value;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,12 +33,12 @@ import net.sf.cpsolver.ifs.model.Value;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class TimModel extends TTComp02Model {
     private static Logger sLog = Logger.getLogger(TimModel.class);
-    private Vector iPrecedences = new Vector();
+    private List<TimPrecedence> iPrecedences = new ArrayList<TimPrecedence>();
     
     /** Weight of violated precedence constraints */
     public static int sPrecedenceViolationWeight = 0;
@@ -81,21 +79,19 @@ public class TimModel extends TTComp02Model {
 		int nrFeatures = Integer.parseInt(stk.nextToken());
 		int nrStudents = Integer.parseInt(stk.nextToken());
 		
-		iRooms = new Vector();
+		iRooms = new ArrayList<TimRoom>();
 		for (int i=0;i<nrRooms;i++)
 			iRooms.add(new TimRoom(i, Integer.parseInt(in.readLine())));
 		
 		for (int i=0;i<nrEvents;i++)
 			addVariable(new TimEvent(i));
 		
-		iStudents = new Vector();
+		iStudents = new ArrayList<TimStudent>();
 		for (int i=0;i<nrStudents;i++)
 			iStudents.add(new TimStudent(i));
 		
-		for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-		    TimStudent student = (TimStudent)e.nextElement();
-		    for (Enumeration f=variables().elements();f.hasMoreElements();) {
-		        TimEvent event = (TimEvent)f.nextElement();
+		for (TimStudent student: iStudents) {
+		    for (TimEvent event: variables()) {
 				if (1==Integer.parseInt(in.readLine())) {
 					event.students().add(student);
 					student.addVariable(event);
@@ -113,10 +109,8 @@ public class TimModel extends TTComp02Model {
 			for (int j=0;j<nrFeatures;j++)
 				eventFeature[i][j] = (1==Integer.parseInt(in.readLine()));
 		
-		for (Enumeration e=iRooms.elements();e.hasMoreElements();) {
-		    TimRoom room = (TimRoom)e.nextElement();
-            for (Enumeration f=variables().elements();f.hasMoreElements();) {
-                TimEvent event = (TimEvent)f.nextElement();
+		for (TimRoom room: iRooms) {
+            for (TimEvent event: variables()) {
 				if (event.students().size()>room.size()) continue;
 				boolean hasAllFeatures = true;
 				for (int j=0;j<nrFeatures;j++) {
@@ -130,17 +124,14 @@ public class TimModel extends TTComp02Model {
 			}
 		}
 		
-        for (Enumeration e=variables().elements();e.hasMoreElements();) {
-            TimEvent event = (TimEvent)e.nextElement();
+        for (TimEvent event: variables()) {
             for (int i=0;i<45;i++) {
                 event.setAvailable(i, (1==Integer.parseInt(in.readLine())));
             }
         }
 
-        for (Enumeration e=variables().elements();e.hasMoreElements();) {
-            TimEvent ev1 = (TimEvent)e.nextElement();
-            for (Enumeration f=variables().elements();f.hasMoreElements();) {
-                TimEvent ev2 = (TimEvent)f.nextElement();
+        for (TimEvent ev1: variables()) {
+            for (TimEvent ev2: variables()) {
                 if (1==Integer.parseInt(in.readLine())) {
                     TimPrecedence precedence = new TimPrecedence(ev1,ev2);
                     iPrecedences.add(precedence);
@@ -151,20 +142,15 @@ public class TimModel extends TTComp02Model {
             }
         }
 		
-        for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-            TimStudent student = (TimStudent)e.nextElement();
+        for (TimStudent student: iStudents)
 			addConstraint(student);
-		}
 
-        for (Enumeration e=iRooms.elements();e.hasMoreElements();) {
-            TimRoom room = (TimRoom)e.nextElement();
+        for (TimRoom room: iRooms)
 			addConstraint(room);
-		}
         
         for (int i=1;i<=getProperties().getPropertyInt("Tim.NrDummyRooms", 0);i++) {
             TimRoom room = new TimRoom(-i, Integer.MAX_VALUE);
-            for (Enumeration e=variables().elements();e.hasMoreElements();) {
-                TimEvent event = (TimEvent)e.nextElement();
+            for (TimEvent event: variables()) {
                 room.addVariable(event);
                 event.rooms().add(room);
             }
@@ -172,10 +158,8 @@ public class TimModel extends TTComp02Model {
             addConstraint(room);
         }
 		
-        for (Enumeration f=variables().elements();f.hasMoreElements();) {
-            TimEvent event = (TimEvent)f.nextElement();
+        for (TimEvent event: variables())
             event.init(isAllowProhibitedTime(),isAllowNoRoom());
-		}
 		
 		in.close();
 		
@@ -205,34 +189,29 @@ public class TimModel extends TTComp02Model {
             int singleRoom = 0;
             int degree = 0;
             int dsize = 0;
-            for (Enumeration e=variables().elements();e.hasMoreElements();) {
-                TimEvent event = (TimEvent)e.nextElement();
+            for (TimEvent event: variables()) {
                 for (int i=0;i<45;i++)
                     if (!event.isAvailable(i)) notAvail++;
                 avRooms += event.rooms().size();
                 if (event.rooms().size()==1) singleRoom++;
                 dsize += event.values().size();
             }
-            for (Enumeration e=variables().elements();e.hasMoreElements();) {
-                TimEvent e1 = (TimEvent)e.nextElement();
-                for (Enumeration f=variables().elements();f.hasMoreElements();) {
-                    TimEvent e2 = (TimEvent)f.nextElement();
+            for (TimEvent e1: variables()) {
+                for (TimEvent e2: variables()) {
                     boolean sameStudent = false;
-                    for (Enumeration g=e1.students().elements();!sameStudent && g.hasMoreElements();) {
-                        TimStudent s = (TimStudent)g.nextElement();
-                        if (e2.students().contains(s)) sameStudent=true;
+                    for (TimStudent s: e1.students()) {
+                        if (e2.students().contains(s)) { sameStudent=true; break; }
                     }
                     if (sameStudent) 
                         degree++;
-                    else if (e1.rooms().size()==1 && e2.rooms().size()==1 && e1.rooms().firstElement().equals(e2.rooms().firstElement()))
+                    else if (e1.rooms().size()==1 && e2.rooms().size()==1 && e1.rooms().get(0).equals(e2.rooms().get(0)))
                         degree++;
                     else if (e1.predecessors().contains(e2) || e1.successors().contains(e2))
                         degree++;
                 }
             }
             int stEvs = 0;
-            for (Enumeration e=students().elements();e.hasMoreElements();) {
-                TimStudent student = (TimStudent)e.nextElement();
+            for (TimStudent student: students()) {
                 stEvs += student.variables().size();
             }
             if (!ex) {
@@ -304,24 +283,22 @@ public class TimModel extends TTComp02Model {
     public int distanceToFeasibility() {
         if (nrUnassignedVariables()==0) return 0;
         int df=0;
-        for (Enumeration e=unassignedVariables().elements();e.hasMoreElements();) {
-            TimEvent event = (TimEvent)e.nextElement();
+        for (TimEvent event: unassignedVariables())
             df+=event.students().size();
-        }
         return df;
     }
     
     /** Solution info -- added solution criteria (soft constraint violations)*/
-    public Hashtable getInfo() {
-        Hashtable info = super.getInfo();
+    public Map<String, String> getInfo() {
+    	Map<String, String> info = super.getInfo();
         info.put("Precedence violations",String.valueOf(precedenceViolations(false)));
         info.put("No room violations",String.valueOf(noRoomViolations(false)));
         return info;
     }
     
     /** Solution info -- added solution criteria (soft constraint violations, precise computation)*/
-    public Hashtable getExtendedInfo() {
-        Hashtable info = super.getExtendedInfo();
+    public Map<String, String> getExtendedInfo() {
+    	Map<String, String> info = super.getExtendedInfo();
         info.put("Precedence violations [p]",String.valueOf(precedenceViolations(true)));
         info.put("No room violations [p]",String.valueOf(noRoomViolations(true)));
         info.put("Distance to feasibility",String.valueOf(distanceToFeasibility()));
@@ -329,7 +306,7 @@ public class TimModel extends TTComp02Model {
     }
 
     /** List of precedence constraints */
-    public Vector getPrecedences() {
+    public List<TimPrecedence> getPrecedences() {
         return iPrecedences;
     }
     
@@ -337,8 +314,7 @@ public class TimModel extends TTComp02Model {
     public int precedenceViolations(boolean precise) {
         if (!precise) return iPrecedenceViolations;
         int violations = 0;
-        for (Enumeration e=iPrecedences.elements();e.hasMoreElements();) {
-            TimPrecedence precedence = (TimPrecedence)e.nextElement();
+        for (TimPrecedence precedence: iPrecedences) {
             if (precedence.isHardPrecedence()) continue;
             if (!precedence.isSatisfied())
                 violations++;
@@ -354,8 +330,7 @@ public class TimModel extends TTComp02Model {
     public int noRoomViolations(boolean precise) {
         if (!precise) return iNoRoomViolations;
         int violations = 0;
-        for (Enumeration e=assignedVariables().elements();e.hasMoreElements();) {
-            TimEvent event = (TimEvent)e.nextElement();
+        for (TimEvent event: assignedVariables()) {
             TimLocation location = (TimLocation)event.getAssignment();
             if (location.room()==null) violations++;//violations+=event.students().size();
         }
@@ -365,10 +340,8 @@ public class TimModel extends TTComp02Model {
     /**
      * Update counters on unassignment of an event
      */
-    public void afterUnassigned(long iteration, Value value) {
-        super.afterUnassigned(iteration, value);
-        TimLocation location = (TimLocation)value;
-        TimEvent event = (TimEvent)location.variable();
+    public void afterUnassigned(long iteration, TimLocation location) {
+        super.afterUnassigned(iteration, location);
         iPrecedenceViolations -= location.precedenceViolations();
         if (location.room()==null) iNoRoomViolations--;//-=event.students().size();
     }
@@ -376,10 +349,8 @@ public class TimModel extends TTComp02Model {
     /**
      * Update counters on assignment of an event
      */
-    public void beforeAssigned(long iteration, Value value) {
-        super.beforeAssigned(iteration, value);
-        TimLocation location = (TimLocation)value;
-        TimEvent event = (TimEvent)location.variable();
+    public void beforeAssigned(long iteration, TimLocation location) {
+        super.beforeAssigned(iteration, location);
         iPrecedenceViolations += location.precedenceViolations();
         if (location.room()==null) iNoRoomViolations++;//+=event.students().size();
     }
@@ -394,14 +365,12 @@ public class TimModel extends TTComp02Model {
         sPrecedenceViolationWeight = 5000;
         if ("true".equals(System.getProperty("unassign","true"))) {
             sLog.info("**RESULT** V:"+nrAssignedVariables()+"/"+variables().size()+", P:"+Math.round(getTotalValue())+" ("+csvLine()+")");
-            for (Enumeration e=variables().elements();e.hasMoreElements();) {
-                TimEvent event = (TimEvent)e.nextElement();
+            for (TimEvent event: variables()) {
                 TimLocation loc = (TimLocation)event.getAssignment();
                 if (loc==null) continue;
                 if (loc.room()==null) event.unassign(0);
             }
-            for (Enumeration e=getPrecedences().elements();e.hasMoreElements();) {
-                TimPrecedence pr = (TimPrecedence)e.nextElement();
+            for (TimPrecedence pr: getPrecedences()) {
                 if (pr.isSatisfied()) continue;
                 TimEvent first = (TimEvent)pr.first();
                 TimEvent second = (TimEvent)pr.second();

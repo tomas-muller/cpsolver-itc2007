@@ -1,20 +1,20 @@
 package net.sf.cpsolver.itc.heuristics;
 
-import java.util.Dictionary;
-import java.util.Enumeration;
-import java.util.Vector;
-
-import org.apache.log4j.Logger;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 import net.sf.cpsolver.ifs.extension.Extension;
 import net.sf.cpsolver.ifs.model.Model;
+import net.sf.cpsolver.ifs.model.Value;
+import net.sf.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.ifs.solution.Solution;
 import net.sf.cpsolver.ifs.solution.SolutionListener;
 import net.sf.cpsolver.ifs.solver.Solver;
 import net.sf.cpsolver.ifs.util.DataProperties;
 
-public abstract class ItcParameterWeightOscillation extends Extension implements SolutionListener {
-    private static Logger sLog = Logger.getLogger(ItcParameterWeightOscillation.class);
+public abstract class ItcParameterWeightOscillation<V extends Variable<V, T>, T extends Value<V, T>> extends Extension<V, T> implements SolutionListener<V, T> {
     public long iUpdateInterval = 5000;
     public long iOscillationInterval = 100*iUpdateInterval;
     public long iLastUpdateIteration = 0;
@@ -27,9 +27,9 @@ public abstract class ItcParameterWeightOscillation extends Extension implements
     public double iWeightOscillationCoef = 0.5;
     private double iCurrentValue = 0;
     private double iBestValue = 0;
-    private Vector iOscillationListeners = new Vector();
+    private List<OscillationListener> iOscillationListeners = new ArrayList<OscillationListener>();
     
-    public ItcParameterWeightOscillation(Solver solver, DataProperties properties) {
+    public ItcParameterWeightOscillation(Solver<V,T> solver, DataProperties properties) {
         super(solver, properties);
         iOscillationInterval = properties.getPropertyLong("Oscillation.OscillationInterval", iOscillationInterval);
         iUpdateInterval = properties.getPropertyLong("Oscillation.UpdateInterval", iUpdateInterval);
@@ -40,17 +40,17 @@ public abstract class ItcParameterWeightOscillation extends Extension implements
         iWeightOscillationCoef = properties.getPropertyDouble("Oscillation.WeightOscillationCoef", iWeightOscillationCoef);
     }
     
-    public void register(Model model) {
+    public void register(Model<V,T> model) {
         super.register(model);
         getSolver().currentSolution().addSolutionListener(this);
     }
     
-    public void unregister(Model model) {
+    public void unregister(Model<V,T> model) {
         super.unregister(model);
         getSolver().currentSolution().removeSolutionListener(this);
     }
     
-    public boolean init(Solver solver) {
+    public boolean init(Solver<V,T> solver) {
         iCurrentValue = iBestValue = currentValue();
         weightChanged(getWeight(),getWeight());
         return super.init(solver);
@@ -77,7 +77,7 @@ public abstract class ItcParameterWeightOscillation extends Extension implements
     public abstract double currentValue();
     public abstract void changeWeight(double weight);
     
-    public boolean isImproving(Solution solution) {
+    public boolean isImproving(Solution<V,T> solution) {
         if (solution.getModel().getBestUnassignedVariables()!=0 && solution.getModel().nrUnassignedVariables()==0) {
             iCurrentValue = currentValue();
             return true;
@@ -91,14 +91,12 @@ public abstract class ItcParameterWeightOscillation extends Extension implements
     
     public void weightChanged(int oldWeight, int newWeight) {
         getSolver().currentSolution().setBestValue(getSolver().currentSolution().getBestValue() + (newWeight-oldWeight) * iBestValue);
-        for (Enumeration e=iOscillationListeners.elements();e.hasMoreElements();) {
-            OscillationListener listener = (OscillationListener)e.nextElement();
+        for (OscillationListener listener: iOscillationListeners)
             listener.bestValueChanged((newWeight-oldWeight) * iBestValue);
-        }
         changeWeight(newWeight);
     }
     
-    public void solutionUpdated(Solution solution) {
+    public void solutionUpdated(Solution<V,T> solution) {
         if (isImproving(solution)) {
             iLastImprovementIteration = solution.getIteration();
             iLastImprovementWeight = iWeight;
@@ -114,13 +112,13 @@ public abstract class ItcParameterWeightOscillation extends Extension implements
         }
     }
     
-    public void getInfo(Solution solution, Dictionary info) {}
-    public void getInfo(Solution solution, Dictionary info, Vector variables) {}
-    public void bestCleared(Solution solution) {}
-    public void bestSaved(Solution solution) {
+    public void getInfo(Solution<V,T> solution, Map<String, String> info) {}
+    public void getInfo(Solution<V,T> solution, Map<String, String> info, Collection<V> variables) {}
+    public void bestCleared(Solution<V,T> solution) {}
+    public void bestSaved(Solution<V,T> solution) {
         iBestValue = currentValue();
     }
-    public void bestRestored(Solution solution) {}
+    public void bestRestored(Solution<V,T> solution) {}
     
     public void addOscillationListener(OscillationListener listener) {
         iOscillationListeners.add(listener);

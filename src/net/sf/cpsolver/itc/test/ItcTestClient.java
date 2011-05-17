@@ -1,13 +1,12 @@
 package net.sf.cpsolver.itc.test;
 
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Vector;
 
 import org.apache.log4j.Logger;
 
@@ -22,12 +21,12 @@ import net.sf.cpsolver.itc.ItcTest;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,32 +34,33 @@ import net.sf.cpsolver.itc.ItcTest;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class ItcTestClient {
     private static Logger sLog = Logger.getLogger(ItcTestClient.class);
     private static String sRegister = null;
-    private static HashSet sUsedServers = new HashSet();
+    private static Set<String> sUsedServers = new HashSet<String>();
     
     /** Initialization
      * @param register server:port of the register service (see {@link ItcTestRegister})
      **/
     public static void init(String register) {
         sRegister = register;
-        Set servers = getAvailableServers();
+        Set<String> servers = getAvailableServers();
         sLog.warn("Available servers: "+servers);
     }
     
     /** List available test servers */
-    public static Set getAvailableServers() {
+    public static Set<String> getAvailableServers() {
         if (sRegister==null) return null;
         try {
             String host = sRegister.substring(0, sRegister.indexOf(':'));
             int port = Integer.parseInt(sRegister.substring(sRegister.indexOf(':')+1));
             Socket client = new Socket(host, port);
             ItcRemoteIO.writeObject(client, "LIST");
-            Set servers = (TreeSet)ItcRemoteIO.readObject(client);
+            @SuppressWarnings("unchecked")
+			Set<String> servers = (TreeSet<String>)ItcRemoteIO.readObject(client);
             ItcRemoteIO.writeObject(client, null);
             client.close();
             return servers;
@@ -74,15 +74,14 @@ public class ItcTestClient {
     protected static String get() {
         synchronized (sUsedServers) {
             while (true) {
-                Set av = getAvailableServers();
+                Set<String> av = getAvailableServers();
                 if (av==null) {
                     String server = "local";
                     if (!sUsedServers.contains(server)) {
                         sUsedServers.add(server); return server;
                     }
                 } else {
-                    for (Iterator i=av.iterator();i.hasNext();) {
-                        String server = (String)i.next();
+                    for (String server: av) {
                         if (!sUsedServers.contains(server)) {
                             sUsedServers.add(server); return server;
                         }
@@ -110,7 +109,7 @@ public class ItcTestClient {
                 String server = get();
                 instance.before(server, t);
                 if ("local".equals(server)) {
-                    Solution solution = ItcTest.test(instance.getInstance(), instance.getProperties(), instance.getSeed(), instance.getTimeout());
+                    Solution<?,?> solution = ItcTest.test(instance.getInstance(), instance.getProperties(), instance.getSeed(), instance.getTimeout());
                     if (solution!=null)
                         instance.setValue(new Double(solution.getBestValue()+5000*solution.getModel().getBestUnassignedVariables()));
                 } else {
@@ -195,16 +194,14 @@ public class ItcTestClient {
     }
     
     /** Solve a collection of test instances {@link TestInstance} */
-    public static void test(Collection instances) {
-        Vector threads = new Vector();
-        for (Iterator i=instances.iterator();i.hasNext();) {
-            TestInstance instance = (TestInstance)i.next();
+    public static void test(Collection<? extends TestInstance> instances) {
+        List<Thread> threads = new ArrayList<Thread>();
+        for (TestInstance instance: instances) {
             Thread t = new Thread(instance);
             t.start();
             threads.add(t);
         }
-        for (Enumeration e=threads.elements();e.hasMoreElements();) {
-            Thread t = (Thread)e.nextElement();
+        for (Thread t: threads) {
             try {
                 t.join();
             } catch (InterruptedException x) {}

@@ -1,7 +1,5 @@
 package net.sf.cpsolver.itc.exam.model;
 
-import java.util.Enumeration;
-import java.util.Iterator;
 import java.util.Set;
 
 import net.sf.cpsolver.ifs.model.BinaryConstraint;
@@ -15,12 +13,12 @@ import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,10 +26,10 @@ import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExPlacement extends Value implements TabuElement {
+public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuElement {
     private ExPeriod iPeriod;
     private ExRoom iRoom;
     private int iHashCode;
@@ -90,8 +88,7 @@ public class ExPlacement extends Value implements TabuElement {
         boolean next = nextPeriod!=null && getPeriod().getDay()==nextPeriod.getDay(); 
         if (!prev && !next) return 0;
         int penalty = 0;
-        for (Enumeration e=((ExExam)variable()).getStudents().elements();e.hasMoreElements();) {
-            ExStudent student = (ExStudent)e.nextElement();
+        for (ExStudent student: variable().getStudents()) {
             if (m.areDirectConflictsAllowed() && student.nrExams(getPeriod(), exam)>0) continue;
             if (next && student.hasExam(nextPeriod,exam)) penalty++;
             if (prev && student.hasExam(prevPeriod,exam)) penalty++;
@@ -105,10 +102,8 @@ public class ExPlacement extends Value implements TabuElement {
         ExModel m = (ExModel)exam.getModel();
         if (!m.areDirectConflictsAllowed()) return 0;
         int conflicts = 0;
-        for (Enumeration e=exam.getStudents().elements();e.hasMoreElements();) {
-            ExStudent student = (ExStudent)e.nextElement();
+        for (ExStudent student: variable().getStudents())
             if (student.nrExams(getPeriod(), exam)>0) conflicts++;
-        }
         return conflicts;
     }
 
@@ -122,8 +117,7 @@ public class ExPlacement extends Value implements TabuElement {
         boolean next = nextPeriod!=null && getPeriod().getDay()==nextPeriod.getDay(); 
         if (!prev && !next) return 0;
         int penalty = 0;
-        for (Enumeration e=((ExExam)variable()).getStudents().elements();e.hasMoreElements();) {
-            ExStudent student = (ExStudent)e.nextElement();
+        for (ExStudent student: variable().getStudents()) {
             if (m.areDirectConflictsAllowed() && student.nrExams(getPeriod(), exam)>0) continue;
             if (prev) 
                 for (ExPeriod p=prevPeriod;p!=null && p.getDay()==getPeriod().getDay();p=p.prev())
@@ -140,8 +134,7 @@ public class ExPlacement extends Value implements TabuElement {
         ExExam exam = (ExExam)variable();
         ExModel m = (ExModel)exam.getModel();
         int penalty = 0;
-        for (Enumeration e=((ExExam)variable()).getStudents().elements();e.hasMoreElements();) {
-            ExStudent student = (ExStudent)e.nextElement();
+        for (ExStudent student: variable().getStudents()) {
             if (m.areDirectConflictsAllowed() && student.nrExams(getPeriod(), exam)>0) continue;
             for (ExPeriod p=getPeriod().next();p!=null && p.getIndex()-getPeriod().getIndex()<=m.getPeriodSpreadLength(); p=p.next())
                 if (student.hasExam(p,exam)) penalty++;
@@ -163,11 +156,10 @@ public class ExPlacement extends Value implements TabuElement {
         boolean prev2 = prevPeriod2!=null && getPeriod().getDay()==prevPeriod2.getDay();
         boolean next2 = nextPeriod2!=null && getPeriod().getDay()==nextPeriod2.getDay(); 
         int penalty = 0;
-        for (Enumeration e1=((ExExam)variable()).getStudents().elements();e1.hasMoreElements();) {
-            ExStudent student = (ExStudent)e1.nextElement();
+        for (ExStudent student: variable().getStudents()) {
 
             if (m.areDirectConflictsAllowed()) {
-                Set exams = student.getExams(getPeriod());
+                Set<ExExam> exams = student.getExams(getPeriod());
                 int nrExams = exams.size() + (exams.contains(exam)?0:1);
                 if (nrExams>1) {
                     penalty+=m.getDirectConflictWeight();
@@ -198,10 +190,9 @@ public class ExPlacement extends Value implements TabuElement {
         int length = ((ExExam)variable()).getLength();
         int sameLength = 1, diffLength = 0;
         ExExam exam = (ExExam)variable();
-        for (Iterator i=getRoom().getExams(getPeriod()).iterator();i.hasNext();) {
-            ExExam x = (ExExam)((ExPlacement)i.next()).variable();
-            if (exam.equals(x)) continue;
-            if (x.getLength()!=length) diffLength++; else sameLength++;
+        for (ExPlacement p: getRoom().getExams(getPeriod())) {
+            if (exam.equals(p.variable())) continue;
+            if (p.variable().getLength()!=length) diffLength++; else sameLength++;
         }
         return (diffLength>0 && sameLength==1?1:0);
     }
@@ -218,14 +209,13 @@ public class ExPlacement extends Value implements TabuElement {
     public int nrBinaryViolations() {
         ExExam exam = (ExExam)variable();
         int viol = 0;
-        for (Enumeration e=exam.binaryConstraints().elements();e.hasMoreElements();) {
-            BinaryConstraint bc = (BinaryConstraint)e.nextElement();
+        for (BinaryConstraint<ExExam, ExPlacement> bc: exam.binaryConstraints()) {
             if (bc.isHard()) continue;
             if (bc.first().equals(exam)) {
-                ExPlacement another = (ExPlacement)bc.second().getAssignment();
+                ExPlacement another = bc.second().getAssignment();
                 if (another!=null && !bc.isConsistent(this, another)) viol++;
             } else {
-                ExPlacement another = (ExPlacement)bc.first().getAssignment();
+                ExPlacement another = bc.first().getAssignment();
                 if (another!=null && !bc.isConsistent(another, this)) viol++;
             }
         }

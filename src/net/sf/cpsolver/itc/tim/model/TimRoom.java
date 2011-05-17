@@ -1,12 +1,10 @@
 package net.sf.cpsolver.itc.tim.model;
 
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
 import net.sf.cpsolver.ifs.model.Constraint;
 import net.sf.cpsolver.ifs.model.ConstraintListener;
-import net.sf.cpsolver.ifs.model.Value;
 
 /**
  * Representation of a room constraint. It is not allowed to assign two 
@@ -19,12 +17,12 @@ import net.sf.cpsolver.ifs.model.Value;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,10 +30,10 @@ import net.sf.cpsolver.ifs.model.Value;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class TimRoom extends Constraint {
+public class TimRoom extends Constraint<TimEvent, TimLocation> {
     private TimLocation[] iTable = new TimLocation[45];
 	private int iSize;
 	
@@ -60,7 +58,7 @@ public class TimRoom extends Constraint {
 	}
 	
 	/** Compute conflicts: check whether another event is assigned in this room in the given time */
-	public void computeConflicts(Value value, Set conflicts) {
+	public void computeConflicts(TimLocation value, Set<TimLocation> conflicts) {
 		TimLocation location = (TimLocation)value;
 		if (sameRoom(location.room())) {
 			if (iTable[location.time()]!=null && !iTable[location.time()].variable().equals(location.variable())) {
@@ -75,15 +73,13 @@ public class TimRoom extends Constraint {
 	}
 	
 	/** Compute conflicts: check whether another event is assigned in this room in the given time */
-	public boolean inConflict(Value value) {
+	public boolean inConflict(TimLocation value) {
         TimLocation location = (TimLocation)value;
         return (sameRoom(location.room()) && iTable[location.time()]!=null && !iTable[location.time()].variable().equals(location.variable()));
 	}
 	
 	/** Two events are consistent if they are using this room at different times */
-	public boolean isConsistent(Value value1, Value value2) {
-	    TimLocation loc1 = (TimLocation)value1;
-	    TimLocation loc2 = (TimLocation)value2;
+	public boolean isConsistent(TimLocation loc1, TimLocation loc2) {
 	    return (sameRoom(loc1.room()) && sameRoom(loc2.room()) && loc1.time()==loc2.time()); 
 	}
 	
@@ -98,17 +94,16 @@ public class TimRoom extends Constraint {
 	}
 
 	/** Update room assignment table */
-	public void assigned(long iteration, Value value) {
+	public void assigned(long iteration, TimLocation loc) {
 	    //super.assigned(iteration, value);
-	    TimLocation loc = (TimLocation)value;
 	    if (sameRoom(loc.room())) {
 	        if (iTable[loc.time()]!=null) {
-	            HashSet confs = new HashSet(); confs.add(iTable[loc.time()]);
+	            Set<TimLocation> confs = new HashSet<TimLocation>(); confs.add(iTable[loc.time()]);
 	            iTable[loc.time()].variable().unassign(iteration);
 	            iTable[loc.time()]=loc;
                 if (iConstraintListeners!=null)
-                    for (Enumeration e=iConstraintListeners.elements();e.hasMoreElements();)
-                        ((ConstraintListener)e.nextElement()).constraintAfterAssigned(iteration, this, value, confs);
+                    for (ConstraintListener<TimLocation> listener: iConstraintListeners)
+                        listener.constraintAfterAssigned(iteration, this, loc, confs);
 	        } else {
 	            iTable[loc.time()]=loc;
 	        }
@@ -116,7 +111,7 @@ public class TimRoom extends Constraint {
     }
 		
     /** Update room assignment table */
-    public void unassigned(long iteration, Value value) {
+    public void unassigned(long iteration, TimLocation value) {
         //super.unassigned(iteration, value);
         TimLocation loc = (TimLocation)value;
         if (sameRoom(loc.room())) iTable[loc.time()]=null;

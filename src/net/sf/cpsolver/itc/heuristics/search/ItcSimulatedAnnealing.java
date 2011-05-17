@@ -1,13 +1,17 @@
 package net.sf.cpsolver.itc.heuristics.search;
 
 import java.text.DecimalFormat;
-import java.util.Enumeration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.Vector;
 
 import net.sf.cpsolver.exam.neighbours.ExamSimpleNeighbour;
 import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
 import net.sf.cpsolver.ifs.model.Neighbour;
+import net.sf.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.ifs.solution.Solution;
 import net.sf.cpsolver.ifs.solution.SolutionListener;
@@ -70,12 +74,12 @@ import org.apache.log4j.Logger;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -83,11 +87,11 @@ import org.apache.log4j.Logger;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 
-public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListener, LazyNeighbourAcceptanceCriterion {
+public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T>, SolutionListener<V,T>, LazyNeighbourAcceptanceCriterion<V,T> {
     private static Logger sLog = Logger.getLogger(ItcSimulatedAnnealing.class);
     private static boolean sInfo = sLog.isInfoEnabled();
     private static DecimalFormat sDF2 = new DecimalFormat("0.00");
@@ -116,7 +120,7 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
     
     private boolean iRelativeAcceptance = true;
     
-    private Vector iNeighbourSelectors = new Vector();
+    private List<NeighbourSelector<V,T>> iNeighbourSelectors = new ArrayList<NeighbourSelector<V,T>>();
     private boolean iRandomSelection = false;
     private boolean iUpdatePoints = false;
     private double iTotalBonus;
@@ -164,14 +168,15 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
                 bonus = Double.parseDouble(nsClassName.substring(nsClassName.indexOf('@')+1));
                 nsClassName = nsClassName.substring(0, nsClassName.indexOf('@'));
             }
-            Class nsClass = Class.forName(nsClassName);
-            NeighbourSelection ns = (NeighbourSelection)nsClass.getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[]{properties});
+            Class<?> nsClass = Class.forName(nsClassName);
+            @SuppressWarnings("unchecked")
+			NeighbourSelection<V,T> ns = (NeighbourSelection<V,T>)nsClass.getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[]{properties});
             addNeighbourSelection(ns,bonus);
         }
     }
     
     /** Initialization */
-    public void init(Solver solver) {
+    public void init(Solver<V,T> solver) {
         iTemperature = iInitialTemperature;
         long tl = getTemperatureLength(solver);
         iTemperatureLength = Math.round(iTempLengthCoef*tl);
@@ -179,23 +184,20 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
         iRestoreBestLength = Math.round(iRestoreBestLengthCoef*iTemperatureLength);
         solver.currentSolution().addSolutionListener(this);
         iTotalBonus = 0;
-        for (Enumeration e=iNeighbourSelectors.elements();e.hasMoreElements();) {
-            NeighbourSelector s = (NeighbourSelector)e.nextElement();
+        for (NeighbourSelector<V,T> s: iNeighbourSelectors) {
             s.init(solver);
             iTotalBonus += s.getBonus();
         }
     }
     
-    private void addNeighbourSelection(NeighbourSelection ns, double bonus) {
-        iNeighbourSelectors.add(new NeighbourSelector(ns, bonus, iUpdatePoints));
+    private void addNeighbourSelection(NeighbourSelection<V,T> ns, double bonus) {
+        iNeighbourSelectors.add(new NeighbourSelector<V,T>(ns, bonus, iUpdatePoints));
     }
     
-    private long getTemperatureLength(Solver solver) {
+    private long getTemperatureLength(Solver<V,T> solver) {
         long len = 0;
-        for (Enumeration e=solver.currentSolution().getModel().variables().elements();e.hasMoreElements();) {
-            Variable variable = (Variable)e.nextElement();
+        for (V variable: solver.currentSolution().getModel().variables())
             len += variable.values().size();
-        }
         sLog.info("Temperature length "+len);
         return len;
     }
@@ -203,14 +205,12 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
     private double totalPoints() {
         if (!iUpdatePoints) return iTotalBonus;
         double total = 0;
-        for (Enumeration e=iNeighbourSelectors.elements();e.hasMoreElements();) {
-            NeighbourSelector ns = (NeighbourSelector)e.nextElement();
+        for (NeighbourSelector<V,T> ns: iNeighbourSelectors)
             total += ns.getPoints();
-        }
         return total;
     }
 
-    private void cool(Solution solution) {
+    private void cool(Solution<V,T> solution) {
         iTemperature *= iCoolingRate;
         if (sInfo) {
             sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
@@ -221,17 +221,15 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
         		"p(+1)="+sDF2.format(100.0*prob(1))+"%, "+
         		"p(+10)="+sDF5.format(100.0*prob(10))+"%)");
             if (iUpdatePoints)
-                for (Enumeration e=iNeighbourSelectors.elements();e.hasMoreElements();) {
-                    NeighbourSelector ns = (NeighbourSelector)e.nextElement();
+                for (NeighbourSelector<V,T> ns: iNeighbourSelectors)
                     sLog.info("  "+ns+" ("+sDF2.format(ns.getPoints())+" pts, "+sDF2.format(100.0*(iUpdatePoints?ns.getPoints():ns.getBonus())/totalPoints())+"%)");
-                }
             iAcceptIter=new int[] {0,0,0};
             iMoves = 0; iAbsValue = 0;
         }
         iLastCoolingIter=iIter;
     }
     
-    private void reheat(Solution solution) {
+    private void reheat(Solution<V,T> solution) {
         iTemperature *= iReheatRate;
         if (sInfo) {
             sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
@@ -244,26 +242,26 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
         iLastReheatIter=iIter;
     }
     
-    private void restoreBest(Solution solution) {
+    private void restoreBest(Solution<V,T> solution) {
         sLog.info("Best restored");
         iLastImprovingIter=iIter;
     }
     
-    private Neighbour genMove(Solution solution) {
+    private Neighbour<V,T> genMove(Solution<V,T> solution) {
         while (true) {
             if (incIter(solution)) return null;
-            NeighbourSelector ns = null;
+            NeighbourSelector<V,T> ns = null;
             if (iRandomSelection) {
-                ns = (NeighbourSelector)ToolBox.random(iNeighbourSelectors);
+                ns = ToolBox.random(iNeighbourSelectors);
             } else {
                 double points = (ToolBox.random()*totalPoints());
-                for (Enumeration e=iNeighbourSelectors.elements();e.hasMoreElements();) {
-                    ns = (NeighbourSelector)e.nextElement();
+                for (Iterator<NeighbourSelector<V,T>> i = iNeighbourSelectors.iterator(); i.hasNext(); ) {
+                    ns = i.next();
                     points -= (iUpdatePoints?ns.getPoints():ns.getBonus());
                     if (points<=0) break;
                 }
             }
-            Neighbour n = ns.selectNeighbour(solution);
+            Neighbour<V,T> n = ns.selectNeighbour(solution);
             if (n!=null) return n;
         }
     }
@@ -275,9 +273,9 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
             return (value<=0.0?1.0:Math.exp(-value/iTemperature));
     }
     
-    private boolean accept(Solution solution, Neighbour neighbour) {
+    private boolean accept(Solution<V,T> solution, Neighbour<V,T> neighbour) {
         if (neighbour instanceof ItcLazyNeighbour) {
-            ((ItcLazyNeighbour)neighbour).setAcceptanceCriterion(this);
+            ((ItcLazyNeighbour<V,T>)neighbour).setAcceptanceCriterion(this);
             return true;
         }
         double value = (iRelativeAcceptance?neighbour.value():solution.getModel().getTotalValue()+neighbour.value()-solution.getBestValue());
@@ -290,7 +288,7 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
     }
     
     /** Implementation of {@link net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion} interface */
-    public boolean accept(ItcLazyNeighbour neighbour, double value) {
+    public boolean accept(ItcLazyNeighbour<V,T> neighbour, double value) {
         double prob = prob(value);
         if (prob>=1.0 || ToolBox.random()<prob) {
             if (sInfo) iAcceptIter[value<0.0?0:value>0.0?2:1]++;
@@ -299,7 +297,7 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
         return false;
     }
     
-    private boolean incIter(Solution solution) {
+    private boolean incIter(Solution<V,T> solution) {
         if (iT0<0) iT0 = System.currentTimeMillis();
         iIter++;
         if (iIter>iLastImprovingIter+iRestoreBestLength) restoreBest(solution);
@@ -312,8 +310,8 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
     }
     
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
-        Neighbour neighbour = null;
+    public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
+        Neighbour<V,T> neighbour = null;
         while ((neighbour=genMove(solution))!=null) {
             if (sInfo) {
                 iMoves++; iAbsValue += neighbour.value() * neighbour.value();
@@ -323,13 +321,13 @@ public class ItcSimulatedAnnealing implements NeighbourSelection, SolutionListen
         return (neighbour==null?null:neighbour);
     }
     
-    public void bestSaved(Solution solution) {
+    public void bestSaved(Solution<V,T> solution) {
         iLastImprovingIter = iIter;
     }
-    public void solutionUpdated(Solution solution) {}
-    public void getInfo(Solution solution, java.util.Dictionary info) {}
-    public void getInfo(Solution solution, java.util.Dictionary info, java.util.Vector variables) {}
-    public void bestCleared(Solution solution) {}
-    public void bestRestored(Solution solution){}    
+    public void solutionUpdated(Solution<V,T> solution) {}
+    public void getInfo(Solution<V,T> solution, Map<String, String> info) {}
+    public void getInfo(Solution<V,T> solution, Map<String, String> info, Collection<V> variables) {}
+    public void bestCleared(Solution<V,T> solution) {}
+    public void bestRestored(Solution<V,T> solution){}
     
 }

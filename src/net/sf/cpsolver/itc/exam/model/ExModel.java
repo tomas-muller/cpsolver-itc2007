@@ -5,21 +5,22 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TreeSet;
-import java.util.Vector;
 
 import org.apache.log4j.Logger;
 
 import net.sf.cpsolver.ifs.model.BinaryConstraint;
 import net.sf.cpsolver.ifs.model.Constraint;
-import net.sf.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -29,12 +30,12 @@ import net.sf.cpsolver.itc.ItcModel;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -42,18 +43,18 @@ import net.sf.cpsolver.itc.ItcModel;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExModel extends ItcModel {
+public class ExModel extends ItcModel<ExExam, ExPlacement> {
     private static Logger sLog = Logger.getLogger(ExModel.class);
-    private Vector iPeriods = new Vector();
-    private Vector iRooms = new Vector();
-    private Vector iStudents = new Vector();
+    private List<ExPeriod> iPeriods = new ArrayList<ExPeriod>();
+    private List<ExRoom> iRooms = new ArrayList<ExRoom>();
+    private List<ExStudent> iStudents = new ArrayList<ExStudent>();
     private int iTwoInARow = 0, iTwoInADay = 0, iPeriodSpread = 0, iNonMixedDurations = 0;
     private int iFrontLoad[] = new int [] {0, 0, 0};
-    private Vector iLargestExams = new Vector();
-    private Vector iBinaryConstraints = new Vector();
+    private List<ExExam> iLargestExams = new ArrayList<ExExam>();
+    private List<BinaryConstraint<ExExam, ExPlacement>> iBinaryConstraints = new ArrayList<BinaryConstraint<ExExam,ExPlacement>>();
     private int iFronLoadThreshold = 0;
     
     private int iFronLoadPenalty = 0, iPeriodPenalty = 0, iRoomPenalty = 0;
@@ -76,29 +77,27 @@ public class ExModel extends ItcModel {
     /** List of periods
      * @return list of {@link ExPeriod}
      */
-    public Vector getPeriods() {
+    public List<ExPeriod> getPeriods() {
         return iPeriods;
     }
     /** First period */
     public ExPeriod firstPeriod() {
-        return (ExPeriod)iPeriods.firstElement();
+        return iPeriods.get(0);
     }
     /** Last period */
     public ExPeriod lastPeriod() {
-        return (ExPeriod)iPeriods.lastElement();
+        return iPeriods.get(iPeriods.size() - 1);
     }
     /** Number of different days */
     public int getNrDays() {
-        return ((ExPeriod)iPeriods.lastElement()).getDay()+1;
+        return lastPeriod().getDay() + 1;
     }
     private int nrTimes = -1;
     /** Number of different times */
     public int getNrTimes() {
         if (nrTimes<0) {
-            for (Enumeration e=getPeriods().elements();e.hasMoreElements();) {
-                ExPeriod p = (ExPeriod)e.nextElement();
+            for (ExPeriod p: getPeriods())
                 nrTimes = Math.max(nrTimes,p.getTime()+1);
-            }
         }
         return nrTimes;
     }
@@ -108,11 +107,11 @@ public class ExModel extends ItcModel {
     }
     /** Period of given index (0 .. getNrPeriods()-1)*/
     public ExPeriod getPeriod(int period) {
-        return (ExPeriod)iPeriods.elementAt(period);
+        return iPeriods.get(period);
     }    
     /** Add a period */
     protected void addPeriod(String day, String time, int length, int weight) {
-        ExPeriod lastPeriod = (iPeriods.isEmpty()?null:(ExPeriod)iPeriods.lastElement());
+        ExPeriod lastPeriod = (iPeriods.isEmpty() ? null : iPeriods.get(iPeriods.size() - 1));
         ExPeriod p = new ExPeriod(day, time, length, weight);
         if (lastPeriod==null)
             p.setIndex(iPeriods.size(),0,0);
@@ -150,8 +149,8 @@ public class ExModel extends ItcModel {
         BufferedReader in = new BufferedReader(new FileReader(file));
         String line = null;
         String state = null; int count = 0;
-        Hashtable students = new Hashtable();
-        Hashtable exams = new Hashtable();
+        Hashtable<Integer, ExStudent> students = new Hashtable<Integer, ExStudent>();
+        Hashtable<Integer, ExExam> exams = new Hashtable<Integer, ExExam>();
         while ((line=in.readLine())!=null) {
             if (line.startsWith("[") && line.endsWith("]")) {
                 state = line.substring(1,line.length()-1);
@@ -173,7 +172,7 @@ public class ExModel extends ItcModel {
                     ExExam exam = new ExExam(variables().size(),length);
                     while (stk.hasMoreTokens()) {
                         int studentId = Integer.parseInt(stk.nextToken());
-                        ExStudent student = (ExStudent)students.get(new Integer(studentId));
+                        ExStudent student = students.get(new Integer(studentId));
                         if (student==null) {
                             if (areDirectConflictsAllowed())
                                 student = new ExStudentSoft(studentId);
@@ -220,7 +219,7 @@ public class ExModel extends ItcModel {
                 if (ex1.equals(ex2)) {
                     sLog.info("Constraint "+constraint+" posted between "+ex1+" and "+ex2+".");
                 } else {
-                    BinaryConstraint c = null;
+                    BinaryConstraint<ExExam, ExPlacement> c = null;
                     if ("AFTER".equals(constraint))
                         c = new ExPrecedence(ex2,ex1,!areBinaryViolationsAllowed());
                     else if ("EXAM_COINCIDENCE".equals(constraint))
@@ -271,25 +270,21 @@ public class ExModel extends ItcModel {
             }
         }
         
-        for (Enumeration e=constraints().elements();e.hasMoreElements();) {
-            Constraint c = (Constraint)e.nextElement();
+        for (Constraint<ExExam, ExPlacement> c: constraints()) {
             if (c instanceof ExRoom)
                 ((ExRoom)c).init();
             if (c instanceof ExStudent)
                 ((ExStudent)c).init();
         }
         
-        for (Enumeration e=variables().elements();e.hasMoreElements();) {
-            ExExam exam = (ExExam)e.nextElement();
+        for (ExExam exam: variables()) {
             exam.init();
-            for (Enumeration f=exam.constraints().elements();f.hasMoreElements();) {
-                Constraint c = (Constraint)f.nextElement();
+            for (Constraint<ExExam, ExPlacement> c: exam.constraints()) {
                 if (c instanceof ExSamePeriod) {
                     ExSamePeriod sp = (ExSamePeriod)c;
                     exam.getSamePeriodExams().add(sp.another(exam));
-                    for (Enumeration g=exam.getStudents().elements();g.hasMoreElements();) {
-                        ExStudent student = (ExStudent)g.nextElement();
-                        if (((ExExam)sp.another(exam)).getStudents().contains(student)) {
+                    for (ExStudent student: exam.getStudents()) {
+                        if (sp.another(exam).getStudents().contains(student)) {
                             sLog.warn("Student "+student+" assigned to same-period exams "+exam+" and "+sp.another(exam));
                             student.removeVariable(exam);
                         }
@@ -297,18 +292,16 @@ public class ExModel extends ItcModel {
                 }
             }
         }
-        TreeSet orderedExams = new TreeSet(new Comparator() {
-            public int compare(Object o1, Object o2) {
-                ExExam e1 = (ExExam)o1;
-                ExExam e2 = (ExExam)o2;
+        TreeSet<ExExam> orderedExams = new TreeSet<ExExam>(new Comparator<ExExam>() {
+            public int compare(ExExam e1, ExExam e2) {
                 int cmp = -Double.compare(e1.getStudents().size(), e2.getStudents().size());
                 if (cmp!=0) return cmp;
                 return Double.compare(e1.getId(), e2.getId());
             }
         });
         orderedExams.addAll(variables());
-        for (Iterator i=orderedExams.iterator();i.hasNext() && iLargestExams.size()<iFrontLoad[0];) {
-            ExExam exam = (ExExam)i.next();
+        for (Iterator<ExExam> i=orderedExams.iterator();i.hasNext() && iLargestExams.size()<iFrontLoad[0];) {
+            ExExam exam = i.next();
             exam.setIsLargest(true);
             iLargestExams.add(exam);
         }
@@ -320,22 +313,20 @@ public class ExModel extends ItcModel {
     }
     
     /** List of all rooms */
-    public Vector getRooms() {
+    public List<ExRoom> getRooms() {
         return iRooms;
     }
     
     /** Two exams in a row penalty:
-     * Count the number of occurrences where two examinations are taken by students straight after one another i.e. back to back. Once this has been established, the number of students involved in each occurance should be added and multiplied by the number provided in the ‘two in a row' weighting within the ‘Institutional Model Index'.  Note that two exams in a row are not counted overnight e.g. if a student has an exam the last period of one day and another the first period the next day, this does not count as two in a row.
+     * Count the number of occurrences where two examinations are taken by students straight after one another i.e. back to back. Once this has been established, the number of students involved in each occurance should be added and multiplied by the number provided in the ï¿½two in a row' weighting within the ï¿½Institutional Model Index'.  Note that two exams in a row are not counted overnight e.g. if a student has an exam the last period of one day and another the first period the next day, this does not count as two in a row.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
     public int getTwoInARow(boolean precise) {
         if (!precise) return iTwoInARow*iTwoInARowPenalty;
         if (iTwoInARow==0) return 0;
         int penalty = 0;
-        for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-            ExStudent student = (ExStudent)e.nextElement();
+        for (ExStudent student: iStudents)
             penalty += student.getTwoInARow();
-        }
         return iTwoInARow*penalty;
     }
 
@@ -348,25 +339,21 @@ public class ExModel extends ItcModel {
         if (!precise) return iTwoInADay*iTwoInADayPenalty;
         if (iTwoInADay==0) return 0;
         int penalty = 0;
-        for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-            ExStudent student = (ExStudent)e.nextElement();
+        for (ExStudent student: iStudents)
             penalty += student.getTwoInADay();
-        }
         return iTwoInADay*penalty;
     }
     
     /**
      * Period spread penalty:
-     * This constraint allows an organisation to 'spread' an individual's examinations over a specified number of periods. This can be thought of an extension of the two constraints previously described.  Within the ‘Institutional Model Index', a figure is provided relating to how many periods the solution should be ‘optimised' over. The higher this figure, potentially the better the spread of examinations for individual students. In many institutions constructing solutions while changing this setting has led to timetables which the Institution is much more satisfied with.
+     * This constraint allows an organisation to 'spread' an individual's examinations over a specified number of periods. This can be thought of an extension of the two constraints previously described.  Within the ï¿½Institutional Model Index', a figure is provided relating to how many periods the solution should be ï¿½optimised' over. The higher this figure, potentially the better the spread of examinations for individual students. In many institutions constructing solutions while changing this setting has led to timetables which the Institution is much more satisfied with.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
     public int getWiderSpread(boolean precise) {
         if (!precise) return iWiderSpreadPenalty;
         int penalty = 0;
-        for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-            ExStudent student = (ExStudent)e.nextElement();
+        for (ExStudent student: iStudents)
             penalty += student.getWiderSpread(iPeriodSpread);
-        }
         return penalty;
     }
     
@@ -379,10 +366,8 @@ public class ExModel extends ItcModel {
     public int getMixedDurations(boolean precise) {
         if (!precise) return iNonMixedDurations*iMixedDurationsPenalty;
         int penalty = 0;
-        for (Enumeration e=iRooms.elements();e.hasMoreElements();) {
-            ExRoom room = (ExRoom)e.nextElement();
+        for (ExRoom room: iRooms)
             penalty += room.getMixedDurations();
-        }
         return iNonMixedDurations*penalty;
     }
     
@@ -394,10 +379,8 @@ public class ExModel extends ItcModel {
     public int getRoomPenalty(boolean precise) {
         if (!precise) return iRoomPenalty;
         int penalty = 0;
-        for (Enumeration e=iRooms.elements();e.hasMoreElements();) {
-            ExRoom room = (ExRoom)e.nextElement();
+        for (ExRoom room: iRooms)
             penalty += room.getRoomPenalty();
-        }
         return penalty;
     }
     
@@ -459,16 +442,14 @@ public class ExModel extends ItcModel {
     public int getPeriodPenalty(boolean precise) {
         if (!precise) return iPeriodPenalty;
         int penalty = 0;
-        for (Enumeration e=assignedVariables().elements();e.hasMoreElements();) {
-            ExPlacement p = (ExPlacement)((ExExam)e.nextElement()).getAssignment();
-            penalty += p.getPeriodPenalty();
-        }
+        for (ExExam x: assignedVariables())
+            penalty += x.getAssignment().getPeriodPenalty();
         return penalty;
     }
 
     /**
      * Front load penalty:
-     * It is desirable that examinations with the largest numbers of students are timetabled at the beginning of the examination session. In order to take account of this the FRONTLOAD expression is introduced. Within the ‘Intuitional Model Index' the FRONTLOAD expression has three parameters e.g., 100, 30, 5
+     * It is desirable that examinations with the largest numbers of students are timetabled at the beginning of the examination session. In order to take account of this the FRONTLOAD expression is introduced. Within the ï¿½Intuitional Model Index' the FRONTLOAD expression has three parameters e.g., 100, 30, 5
      * <br>First parameter = number of largest exams. Largest exams are specified by class size
      * <br>Second parameter= number of last periods to take into account
      * <br>Third parameter= the penalty or weighting 
@@ -476,10 +457,9 @@ public class ExModel extends ItcModel {
      */
     public int getFrontLoadPenalty(boolean precise) {
         if (!precise) return iFrontLoad[2]*iFronLoadPenalty;
-        int penalty = 0, pos = 0;
-        for (Enumeration e=iLargestExams.elements();e.hasMoreElements();pos++) {
-            ExExam exam = (ExExam)e.nextElement();
-            ExPlacement p = (ExPlacement)exam.getAssignment();
+        int penalty = 0;
+        for (ExExam exam: iLargestExams) {
+            ExPlacement p = exam.getAssignment();
             if (p==null) continue;
             if (p.getPeriodIndex()>=getFronLoadThreshold()) penalty++;
         }
@@ -492,8 +472,7 @@ public class ExModel extends ItcModel {
     public boolean save(File file) throws Exception {
         PrintWriter out = new PrintWriter(new FileWriter(file));
         
-        for (Enumeration f=variables().elements();f.hasMoreElements();) {
-            ExExam exam = (ExExam)f.nextElement();
+        for (ExExam exam: variables()) {
             ExPlacement placement = (ExPlacement)exam.getAssignment();
             out.print(placement==null?"-1, -1":placement.getPeriod().getIndex()+", "+placement.getRoom().getId()+"\r\n");
         }
@@ -517,8 +496,7 @@ public class ExModel extends ItcModel {
     public int getBinaryViolations(boolean precise) {
         if (!precise) return iBinaryViolations;
         int violations = 0;
-        for (Enumeration e=iBinaryConstraints.elements();e.hasMoreElements();) {
-            BinaryConstraint bc = (BinaryConstraint)e.nextElement();
+        for (BinaryConstraint<ExExam, ExPlacement> bc: iBinaryConstraints) {
             if (bc.isHard()) continue;
             if (bc.first().getAssignment()!=null && bc.second().getAssignment()!=null && 
                     !bc.isConsistent(bc.first().getAssignment(), bc.second().getAssignment())) violations++;
@@ -533,10 +511,8 @@ public class ExModel extends ItcModel {
     public int getNrDirectConflicts(boolean precise) {
         if (!precise) return iNrDirectConflicts;
         int conflicts = 0;
-        for (Enumeration e=iStudents.elements();e.hasMoreElements();) {
-            ExStudent student = (ExStudent)e.nextElement();
+        for (ExStudent student: iStudents)
             conflicts += student.getNrDirectConflicts();
-        }
         return conflicts;
     }
 
@@ -609,8 +585,8 @@ public class ExModel extends ItcModel {
     /**
      * Solution info -- values of problem specific parameters
      */
-    public Hashtable getInfo() {
-        Hashtable info = super.getInfo();
+    public Map<String, String> getInfo() {
+    	Map<String, String> info = super.getInfo();
         info.put("Two Exams in a Row",String.valueOf(getTwoInARow(false)));
         info.put("Two Exams in a Day",String.valueOf(getTwoInADay(false)));
         info.put("Wider/Period Spread",String.valueOf(getWiderSpread(false)));
@@ -626,8 +602,8 @@ public class ExModel extends ItcModel {
     /**
      * Extended solution info -- values of problem specific parameters (precisely computed)
      */
-    public Hashtable getExtendedInfo() {
-        Hashtable info = super.getExtendedInfo();
+    public Map<String, String> getExtendedInfo() {
+    	Map<String, String> info = super.getExtendedInfo();
         info.put("Two Exams in a Row [p]",String.valueOf(getTwoInARow(true)));
         info.put("Two Exams in a Day [p]",String.valueOf(getTwoInADay(true)));
         info.put("Wider/Period Spread [p]",String.valueOf(getWiderSpread(true)));
@@ -643,10 +619,9 @@ public class ExModel extends ItcModel {
     /**
      * Update counters on unassignment of an exam
      */
-    public void beforeUnassigned(long iteration, Value value) {
-        super.beforeUnassigned(iteration, value);
-        ExExam exam = (ExExam)value.variable();
-        ExPlacement placement = (ExPlacement)value;
+    public void beforeUnassigned(long iteration, ExPlacement placement) {
+        super.beforeUnassigned(iteration, placement);
+        ExExam exam = placement.variable();
         iFronLoadPenalty-=placement.frontLoadPenalty();
         iPeriodPenalty-=placement.getPeriodPenalty();
         iRoomPenalty-=placement.getRoom().getPenalty();
@@ -656,18 +631,17 @@ public class ExModel extends ItcModel {
         iMixedDurationsPenalty-=placement.mixedDurationsPenalty();
         iBinaryViolations-=placement.nrBinaryViolations();
         iNrDirectConflicts-=placement.nrDirectConflicts();
-        for (Enumeration e=exam.getStudents().elements();e.hasMoreElements();) 
-            ((ExStudent)e.nextElement()).afterUnassigned(iteration, value);
-        placement.getRoom().afterUnassigned(iteration, value);
+        for (ExStudent s: exam.getStudents())
+            s.afterUnassigned(iteration, placement);
+        placement.getRoom().afterUnassigned(iteration, placement);
     }
     
     /**
      * Update counters on assignment of an exam
      */
-    public void afterAssigned(long iteration, Value value) {
-        super.afterAssigned(iteration, value);
-        ExExam exam = (ExExam)value.variable();
-        ExPlacement placement = (ExPlacement)value;
+    public void afterAssigned(long iteration, ExPlacement placement) {
+        super.afterAssigned(iteration, placement);
+        ExExam exam = placement.variable();
         iFronLoadPenalty+=placement.frontLoadPenalty();
         iPeriodPenalty+=placement.getPeriodPenalty();
         iRoomPenalty+=placement.getRoom().getPenalty();
@@ -677,9 +651,9 @@ public class ExModel extends ItcModel {
         iMixedDurationsPenalty+=placement.mixedDurationsPenalty();
         iBinaryViolations+=placement.nrBinaryViolations();
         iNrDirectConflicts+=placement.nrDirectConflicts();
-        for (Enumeration e=exam.getStudents().elements();e.hasMoreElements();) 
-            ((ExStudent)e.nextElement()).afterAssigned(iteration, value);
-        placement.getRoom().afterAssigned(iteration, value);
+        for (ExStudent s: exam.getStudents())
+        	s.afterAssigned(iteration, placement);
+        placement.getRoom().afterAssigned(iteration, placement);
     }
     
     /**
@@ -687,12 +661,10 @@ public class ExModel extends ItcModel {
      * @param out output writer to print violations
      */
     public void report(PrintWriter out) {
-        Vector orderedExams = new Vector(variables());
-        Collections.sort(orderedExams, new Comparator() {
-            public int compare(Object o1, Object o2) {
-                ExExam e1 = (ExExam)o1;
-                ExExam e2 = (ExExam)o2;
-                int cmp = Double.compare(e1.getStudents().size(), e2.getStudents().size());
+        List<ExExam> orderedExams = new ArrayList<ExExam>(variables());
+        Collections.sort(orderedExams, new Comparator<ExExam>() {
+            public int compare(ExExam e1, ExExam e2) {
+                int cmp = -Double.compare(e1.getStudents().size(), e2.getStudents().size());
                 if (cmp!=0) return cmp;
                 return Double.compare(e1.getId(), e2.getId());
             }
@@ -701,8 +673,7 @@ public class ExModel extends ItcModel {
         out.println("Front load threshold is "+iFronLoadThreshold+" ("+getPeriod(iFronLoadThreshold)+")");
         int notScheduled = 0, roomPenaltyCnt = 0, roomPenalty = 0, periodPenaltyCnt = 0, periodPenalty = 0, twoInRow = 0, 
             twoInDay = 0, twoInRowCnt = 0, twoInDayCnt = 0, widerSpreadCnt = 0, widerSpread = 0, frontLoad = 0; 
-        for (Enumeration e=variables().elements();e.hasMoreElements();) {
-            ExExam exam = (ExExam)e.nextElement();
+        for (ExExam exam: variables()) {
             ExPlacement placement = (ExPlacement)exam.getAssignment();
             if (placement==null) {
                 out.println("Exam "+exam.getId()+": not scheduled");
@@ -724,8 +695,7 @@ public class ExModel extends ItcModel {
                     frontLoad++;
                 }
                 int twoInRowThisExam = 0, twoInDayThisExam = 0, widerSpreadThisExam = 0;
-                for (Enumeration f=exam.getStudents().elements();f.hasMoreElements();) {
-                    ExStudent s = (ExStudent)f.nextElement();
+                for (ExStudent s: exam.getStudents()) {
                     for (ExPeriod p=firstPeriod(); p!=null; p=p.next()) {
                         if (!s.hasExam(p)) continue;
                         if (p.getIndex()<=placement.getPeriod().getIndex()) continue;
@@ -775,14 +745,13 @@ public class ExModel extends ItcModel {
             }
         }
         int mixDurCnt = 0;
-        for (Enumeration e=getRooms().elements();e.hasMoreElements();) {
-            ExRoom room = (ExRoom)e.nextElement();
+        for (ExRoom room: getRooms()) {
             for (ExPeriod p=firstPeriod(); p!=null; p=p.next()) {
-                HashSet durations = new HashSet();
+                Set<Integer> durations = new HashSet<Integer>();
                 StringBuffer sb = new StringBuffer();
-                for (Iterator i=room.getExams(p).iterator();i.hasNext();) {
-                    ExPlacement placement = (ExPlacement)i.next();
-                    ExExam exam = (ExExam)placement.variable();
+                for (Iterator<ExPlacement> i=room.getExams(p).iterator(); i.hasNext(); ) {
+                    ExPlacement placement = i.next();
+                    ExExam exam = placement.variable();
                     durations.add(new Integer(exam.getLength()));
                     sb.append(exam.getId()+"/"+exam.getLength());
                     if (i.hasNext()) sb.append(", ");

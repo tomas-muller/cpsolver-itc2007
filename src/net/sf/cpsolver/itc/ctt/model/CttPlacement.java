@@ -1,7 +1,5 @@
 package net.sf.cpsolver.itc.ctt.model;
 
-import java.util.Enumeration;
-
 import net.sf.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
 
@@ -12,12 +10,12 @@ import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,10 +23,10 @@ import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class CttPlacement extends Value implements TabuElement {
+public class CttPlacement extends Value<CttLecture, CttPlacement> implements TabuElement {
     private CttRoom iRoom;
     private int iDay = 0;
     private int iSlot = 0;
@@ -66,12 +64,10 @@ public class CttPlacement extends Value implements TabuElement {
     
     /** String representation */
     public String toString() {
-        CttLecture lecture = (CttLecture)variable();
+        CttLecture lecture = variable();
         int compactPenalty = 0;
-        for (Enumeration e=lecture.getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        for (CttCurricula curricula: lecture.getCourse().getCurriculas())
             compactPenalty += curricula.getCompactPenalty(this);
-        }
         return lecture.getName()+" = "+getRoom().getId()+" "+getDay()+" "+getSlot()+" ["+getRoomCapPenalty()+"+"+getMinDaysPenalty()+"+"+compactPenalty+"+"+getRoomPenalty()+"]";
     }
     
@@ -125,7 +121,7 @@ public class CttPlacement extends Value implements TabuElement {
      */
     public int getMinDaysPenalty() {
         CttLecture lecture = (CttLecture)variable();
-        int days = 0, nrDays = 0;
+        int days = 0;
         int nrSameDays = 0;
         boolean sameDay = false;
         for (int i=0;i<lecture.getCourse().getNrLectures();i++) {
@@ -146,7 +142,7 @@ public class CttPlacement extends Value implements TabuElement {
      */
     public int getMinDaysPenalty(int newDay) {
         CttLecture lecture = (CttLecture)variable();
-        int days = 0, nrDays = 0;
+        int days = 0;
         int nrSameDays = 0;
         boolean sameDay = false;
         for (int i=0;i<lecture.getCourse().getNrLectures();i++) {
@@ -168,10 +164,8 @@ public class CttPlacement extends Value implements TabuElement {
      */
     public int getCompactPenalty() {
         int compactPenalty = 0;
-        for (Enumeration e=((CttLecture)variable()).getCourse().getCurriculas().elements();e.hasMoreElements();) {
-            CttCurricula curricula = (CttCurricula)e.nextElement();
+        for (CttCurricula curricula: variable().getCourse().getCurriculas())
             compactPenalty += curricula.getCompactPenalty(this);
-        }       
         return compactPenalty;
     }
 

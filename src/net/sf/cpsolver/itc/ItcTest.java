@@ -5,6 +5,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
+import java.util.Collection;
+import java.util.Map;
 
 import net.sf.cpsolver.ifs.solution.Solution;
 import net.sf.cpsolver.ifs.solution.SolutionListener;
@@ -72,12 +74,12 @@ import org.apache.log4j.PatternLayout;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -85,17 +87,17 @@ import org.apache.log4j.PatternLayout;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 
+@SuppressWarnings({ "rawtypes", "unchecked" })
 public class ItcTest {
     private static String sProblem = null;
     private static File sInputFile = null;
     private static File sOutputFile = null;
     private static File sCSVFile = null;
     private static File sLogFile = null;
-    private static File sPropertyFile = null;
     private static long sSeed = generateSeed();
     private static long sTimeOut = -1;
     private static DataProperties sConfig = new DataProperties();
@@ -228,8 +230,8 @@ public class ItcTest {
     }
     
     /** Create solver instance */
-    private static Solver create() throws Exception {
-        ItcModel model = (ItcModel)Class.forName(sConfig.getProperty("Model.Class")).newInstance();
+	private static Solver create() throws Exception {
+        ItcModel model = (ItcModel<?,?>)Class.forName(sConfig.getProperty("Model.Class")).newInstance();
         model.setProperties(sConfig);
         if (!model.load(sInputFile)) {
             sLog.error("Unable to load input file.");
@@ -237,13 +239,13 @@ public class ItcTest {
         }
         
         Solver solver = new Solver(sConfig);
-        Solution solution = new Solution(model);
+		Solution solution = new Solution(model);
         solver.setInitalSolution(solution);
         
         solver.currentSolution().addSolutionListener(new SolutionListener() {
             public void solutionUpdated(Solution solution) {}
-            public void getInfo(Solution solution, java.util.Dictionary info) {}
-            public void getInfo(Solution solution, java.util.Dictionary info, java.util.Vector variables) {}
+            public void getInfo(Solution solution, Map info) {}
+            public void getInfo(Solution solution, Map info, Collection variables) {}
             public void bestCleared(Solution solution) {}
             public void bestSaved(Solution solution) {
                 ItcModel m = (ItcModel)solution.getModel();
@@ -256,7 +258,7 @@ public class ItcTest {
     }
     
     /** Solve problem */
-    public static Solution solve() {
+	public static Solution solve() {
         try {
             Solver solver = create();
             
@@ -278,7 +280,7 @@ public class ItcTest {
     }
     
     /** Output solution and some additional information */
-    private static Solution output(Solver solver) throws Exception {
+	private static Solution output(Solver solver) throws Exception {
         Solution solution = solver.lastSolution();
         ItcModel model = (ItcModel)solution.getModel();
         Progress.removeInstance(model);
@@ -320,7 +322,7 @@ public class ItcTest {
     
     /** Stop solver and output solution when Ctrl^C is pressed. */
     private static class ShutdownHook extends Thread {
-        Solver iSolver = null;
+		Solver iSolver = null;
         public ShutdownHook(Solver solver) {
             setName("ShutdownHook");
             iSolver = solver;
@@ -342,7 +344,7 @@ public class ItcTest {
     }
     
     /** Test given instance, return best found solution */
-    public static Solution test(String instance, DataProperties properties, long seed, long timeout) {
+	public static Solution test(String instance, DataProperties properties, long seed, long timeout) {
         ToolBox.setSeed(seed);
         properties.setProperty("General.Seed", String.valueOf(seed));
         properties.setProperty("General.Input", instance);
@@ -360,7 +362,7 @@ public class ItcTest {
     }
     
     /** Main method -- parse input arguments, create solver, solve, and output solution on exit */
-    public static void main(String[] args) {
+	public static void main(String[] args) {
         try {
             if (init(args)) {
                 Solver solver = create();

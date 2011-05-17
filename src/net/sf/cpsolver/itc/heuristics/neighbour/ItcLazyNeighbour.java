@@ -1,6 +1,8 @@
 package net.sf.cpsolver.itc.heuristics.neighbour;
 
 import net.sf.cpsolver.ifs.model.Neighbour;
+import net.sf.cpsolver.ifs.model.Value;
+import net.sf.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -15,12 +17,12 @@ import net.sf.cpsolver.itc.ItcModel;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,17 +30,17 @@ import net.sf.cpsolver.itc.ItcModel;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public abstract class ItcLazyNeighbour extends Neighbour {
-    private LazyNeighbourAcceptanceCriterion iCriterion = null;
+public abstract class ItcLazyNeighbour<V extends Variable<V, T>, T extends Value<V, T>> extends Neighbour<V,T> {
+    private LazyNeighbourAcceptanceCriterion<V,T> iCriterion = null;
     
     /**
      * Set acceptance criterion (to be used by a search strategy before the 
      * neighbour is accepted, so that it can be undone if desired)  
      */
-    public void setAcceptanceCriterion(LazyNeighbourAcceptanceCriterion criterion) {
+    public void setAcceptanceCriterion(LazyNeighbourAcceptanceCriterion<V,T> criterion) {
         iCriterion = criterion;
     }
     
@@ -64,20 +66,20 @@ public abstract class ItcLazyNeighbour extends Neighbour {
     protected abstract void undoAssign(long iteration);
     /** Return problem model (it is needed in order to be able to get
      * overall solution value before and after the assignment of this neighbour) */
-    public abstract ItcModel getModel();
+    public abstract ItcModel<V,T> getModel();
     
     /** Neighbour acceptance criterion interface (to be implemented
      * by search strategies that are using {@link ItcLazyNeighbour}. 
      * It is also required to call {@link ItcLazyNeighbour#setAcceptanceCriterion(net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion)}
      * before the neighbour is accepted by the search strategy. 
      */ 
-    public static interface LazyNeighbourAcceptanceCriterion {
+    public static interface LazyNeighbourAcceptanceCriterion<V extends Variable<V, T>, T extends Value<V, T>> {
         /** True when the currently assigned neighbour should be accepted (false means
          * that the change will be undone
          * @param neighbour neighbour that was assigned
          * @param value change in overall solution value
          * @return true if the neighbour can be accepted (false to undo the assignment)
          */
-        public boolean accept(ItcLazyNeighbour neighbour, double value);
+        public boolean accept(ItcLazyNeighbour<V,T> neighbour, double value);
     }
 }

@@ -6,12 +6,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
-import java.util.Enumeration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.Vector;
 
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.FileAppender;
@@ -90,12 +91,12 @@ import net.sf.cpsolver.itc.test.ItcTestClient.TestInstance;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -103,13 +104,13 @@ import net.sf.cpsolver.itc.test.ItcTestClient.TestInstance;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class ItcRace {
     private static Logger sLog = Logger.getLogger(ItcRace.class);
     private DataProperties iProperties;
-    private Vector iParams;
+    private List<Param> iParams;
     
     /**
      * Constructor 
@@ -117,10 +118,10 @@ public class ItcRace {
      */
     public ItcRace(DataProperties properties) {
         iProperties = properties;
-        iParams = new Vector();
+        iParams = new ArrayList<Param>();
         ItcTestClient.init(iProperties.getProperty("Race.Register"));
         int nrComb = 1;
-        HashSet params = new HashSet();
+        Set<String> params = new HashSet<String>();
         for (StringTokenizer s=new StringTokenizer(properties.getProperty("Race.Params",""),",");s.hasMoreTokens();) {
             String name = s.nextToken();
             String value = properties.getProperty(name);
@@ -131,8 +132,7 @@ public class ItcRace {
             iParams.add(p);
             nrComb *= p.values().size();
         }
-        for (Iterator i=properties.entrySet().iterator();i.hasNext();) {
-            Map.Entry entry = (Map.Entry)i.next();
+        for (Map.Entry<?, ?> entry: properties.entrySet()) {
             String name = (String)entry.getKey();
             String value = ((String)entry.getValue()).trim();
             if (params.contains(name)) continue;
@@ -161,8 +161,7 @@ public class ItcRace {
      * Next parameter set 
      */
     public boolean inc() {
-        for (Enumeration e=iParams.elements();e.hasMoreElements();) {
-            Param p = (Param)e.nextElement();
+        for (Param p: iParams) {
             if (!p.inc()) return true;
         }
         return false;
@@ -170,20 +169,20 @@ public class ItcRace {
     
     private String paramNames() {
         StringBuffer sb = new StringBuffer();
-        for  (Enumeration e=iParams.elements();e.hasMoreElements();) {
-            Param p = (Param)e.nextElement();
+        for  (Iterator<Param> i = iParams.iterator(); i.hasNext(); ) {
+            Param p = i.next();
             sb.append(p.label());
-            if (e.hasMoreElements()) sb.append(",");
+            if (i.hasNext()) sb.append(",");
         }
         return sb.toString();
     }
     
     private String paramValues() {
         StringBuffer sb = new StringBuffer();
-        for  (Enumeration e=iParams.elements();e.hasMoreElements();) {
-            Param p = (Param)e.nextElement();
+        for  (Iterator<Param> i = iParams.iterator(); i.hasNext(); ) {
+            Param p = i.next();
             sb.append(p.value());
-            if (e.hasMoreElements()) sb.append(",");
+            if (i.hasNext()) sb.append(",");
         }
         return sb.toString();
     }
@@ -195,10 +194,10 @@ public class ItcRace {
         boolean header = true;
         do {
             RaceContext cx = new RaceContext(iProperties, "Race");
-            Vector instances = new Vector();
+            List<RaceTestInstance> instances = new ArrayList<RaceTestInstance>();
             for (int a=0;a<cx.getNrAttemts();a++) {
                 for (int i=0;i<cx.getNrInstances();i++) {
-                    instances.addElement(new RaceTestInstance(cx,a,i,iProperties));
+                    instances.add(new RaceTestInstance(cx,a,i,iProperties));
                 }
             }
             ItcTestClient.test(instances);
@@ -282,8 +281,8 @@ public class ItcRace {
     private class Param {
         private String iName;
         private String iLabel = null;
-        private Vector iValues = new Vector();
-        private Enumeration iEnum = null;
+        private List<String> iValues = new ArrayList<String>();
+        private Iterator<String> iEnum = null;
         private String iValue;
         
         public Param(String name, String value) {
@@ -320,13 +319,13 @@ public class ItcRace {
                         iValues.add(d.format(v));
                 } else iValues.add(token);
             }
-            iEnum = iValues.elements();
-            iValue = (String)(iEnum.hasMoreElements()?iEnum.nextElement():null);
+            iEnum = iValues.iterator();
+            iValue = (String)(iEnum.hasNext()?iEnum.next():null);
             iProperties.setProperty(iName, iValue);
         }
         
         public String value() { return iValue; }
-        public Vector values() { return iValues; }
+        public List<String> values() { return iValues; }
         public String name() { return iName; }
         public String label() { return (iLabel==null?iName:iLabel); }
         public String toString() {
@@ -334,10 +333,10 @@ public class ItcRace {
         }
         public boolean inc() {
             boolean ret = false;
-            if (!iEnum.hasMoreElements()) {
-                iEnum = iValues.elements(); ret = true;
+            if (!iEnum.hasNext()) {
+                iEnum = iValues.iterator(); ret = true;
             }
-            iValue = (String)(iEnum.hasMoreElements()?iEnum.nextElement():null);
+            iValue = (String)(iEnum.hasNext()?iEnum.next():null);
             iProperties.setProperty(iName, iValue);
             sLog.warn("Setting "+iName+"="+iValue);
             return ret;

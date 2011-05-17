@@ -2,7 +2,7 @@ package net.sf.cpsolver.itc.exam.neighbours;
 
 
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.Set;
 
 import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
 import net.sf.cpsolver.ifs.model.Neighbour;
@@ -18,8 +18,6 @@ import net.sf.cpsolver.itc.exam.model.ExRoom;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection;
 
-import org.apache.log4j.Logger;
-
 /**
  * Try to swap room assignments between two randomly selected exams.
  * 
@@ -28,12 +26,12 @@ import org.apache.log4j.Logger;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -41,22 +39,21 @@ import org.apache.log4j.Logger;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExRoomSwapMove implements NeighbourSelection, HillClimberSelection {
-    private static Logger sLog = Logger.getLogger(ExTimeMove.class);
+public class ExRoomSwapMove implements NeighbourSelection<ExExam, ExPlacement>, HillClimberSelection {
     private boolean iHC=false;
     
     /** Constructor */
     public ExRoomSwapMove(DataProperties properties) {}
     /** Initialization */
-    public void init(Solver solver) {}
+    public void init(Solver<ExExam, ExPlacement> solver) {}
     /** Set hill-climber mode (worsening moves are skipped) */
     public void setHcMode(boolean hcMode) { iHC = hcMode; }
     
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
+    public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
         ExExam exam = (ExExam)ToolBox.random(model.variables());
         ExPlacement placement = (ExPlacement)exam.getAssignment();
@@ -64,13 +61,13 @@ public class ExRoomSwapMove implements NeighbourSelection, HillClimberSelection 
         ExPeriod period = placement.getPeriod();
         int rx = ToolBox.random(model.getRooms().size());
         for (int r=0;r<model.getRooms().size();r++) {
-            ExRoom room = (ExRoom)model.getRooms().elementAt((r+rx)%model.getRooms().size());
+            ExRoom room = model.getRooms().get((r+rx)%model.getRooms().size());
             if (room.getSize()<exam.getStudents().size()) continue;
             ExPlacement p = new ExPlacement(exam, period, room);
-            HashSet confs = new HashSet();
+            Set<ExPlacement> confs = new HashSet<ExPlacement>();
             room.computeConflicts(p, confs);
             if (confs.size()==1) {
-                Neighbour n = findRoomSwap(exam, (ExExam)((ExPlacement)confs.iterator().next()).variable());
+                Neighbour<ExExam, ExPlacement> n = findRoomSwap(exam, confs.iterator().next().variable());
                 if (n!=null && (!iHC || n.value()<=0)) return n;
             }
         }
@@ -79,19 +76,18 @@ public class ExRoomSwapMove implements NeighbourSelection, HillClimberSelection 
     
     private int mixedDurationsPenalty(ExPlacement placement, int newLength, int weight) {
         int sameLength = 1, diffLength = 0;
-        for (Iterator i=placement.getRoom().getExams(placement.getPeriod()).iterator();i.hasNext();) {
-            ExExam x = (ExExam)((ExPlacement)i.next()).variable();
-            if (x.equals(placement.variable())) continue;
-            if (x.getLength()!=newLength) diffLength++; else sameLength++;
+        for (ExPlacement p: placement.getRoom().getExams(placement.getPeriod())) {
+            if (p.variable().equals(placement.variable())) continue;
+            if (p.variable().getLength()!=newLength) diffLength++; else sameLength++;
         }
         if (diffLength>0 && sameLength==1) return weight;
         return 0;
     }
     
-    private ItcSwap findRoomSwap(ExExam ex1, ExExam ex2) {
+    private ItcSwap<ExExam, ExPlacement> findRoomSwap(ExExam ex1, ExExam ex2) {
         ExModel model = (ExModel)ex1.getModel();
-        ExPlacement p1 = (ExPlacement)ex1.getAssignment();
-        ExPlacement p2 = (ExPlacement)ex2.getAssignment();
+        ExPlacement p1 = ex1.getAssignment();
+        ExPlacement p2 = ex2.getAssignment();
         if (p1==null || p2==null) return null;
         if (p1.getPeriodIndex()!=p2.getPeriodIndex()) return null;
         ExRoom r1 = p1.getRoom();
@@ -109,6 +105,6 @@ public class ExRoomSwapMove implements NeighbourSelection, HillClimberSelection 
                     mixedDurationsPenalty(p2,ex1.getLength(),model.getMixedDurationWeight())-
                     model.getMixedDurationWeight()*(p1.mixedDurationsPenalty()+p2.mixedDurationsPenalty());
         }
-        return new ItcSwap(np1, np2, value); 
+        return new ItcSwap<ExExam, ExPlacement>(np1, np2, value); 
     }    
 }

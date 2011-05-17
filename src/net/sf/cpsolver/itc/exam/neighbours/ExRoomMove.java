@@ -14,8 +14,6 @@ import net.sf.cpsolver.itc.exam.model.ExRoom;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection;
 
-import org.apache.log4j.Logger;
-
 /**
  * Try to find a new room assignment for a randomly selected exam.
  * 
@@ -23,12 +21,12 @@ import org.apache.log4j.Logger;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,22 +34,21 @@ import org.apache.log4j.Logger;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExRoomMove implements NeighbourSelection, HillClimberSelection {
-    private static Logger sLog = Logger.getLogger(ExRoomMove.class);
+public class ExRoomMove implements NeighbourSelection<ExExam, ExPlacement>, HillClimberSelection {
     private boolean iHC = false;
     /** Constructor */
     public ExRoomMove(DataProperties properties) {
     }
     /** Initialization */
-    public void init(Solver solver) {}
+    public void init(Solver<ExExam, ExPlacement> solver) {}
     /** Set hill-climber mode (worsening moves are skipped) */
     public void setHcMode(boolean hcMode) { iHC = hcMode; }
     
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
+    public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
         ExExam exam = (ExExam)ToolBox.random(model.variables());
         ExPlacement placement = (ExPlacement)exam.getAssignment();
@@ -60,7 +57,7 @@ public class ExRoomMove implements NeighbourSelection, HillClimberSelection {
         if (exam.getLength()>period.getLength()) return null;
         int rx = ToolBox.random(model.getRooms().size());
         for (int r=0;r<model.getRooms().size();r++) {
-            ExRoom room = (ExRoom)model.getRooms().elementAt((r+rx)%model.getRooms().size());
+            ExRoom room = model.getRooms().get((r+rx)%model.getRooms().size());
             if (room.inConflict(exam,period)) continue;
             if (room.getSize()<exam.getStudents().size()) continue;
             ExPlacement p = new ExPlacement(exam, period, room);
@@ -74,7 +71,7 @@ public class ExRoomMove implements NeighbourSelection, HillClimberSelection {
                 value = model.getMixedDurationWeight()*(p.mixedDurationsPenalty()-placement.mixedDurationsPenalty()) +
                         room.getPenalty() - placement.getRoom().getPenalty(); 
             }
-            ItcSimpleNeighbour n = new ItcSimpleNeighbour(exam, p, value);
+            ItcSimpleNeighbour<ExExam, ExPlacement> n = new ItcSimpleNeighbour<ExExam, ExPlacement>(exam, p, value);
             if (!iHC || n.value()<=0) return n;
         }
         return null;

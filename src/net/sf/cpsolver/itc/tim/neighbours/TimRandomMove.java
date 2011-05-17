@@ -1,7 +1,5 @@
 package net.sf.cpsolver.itc.tim.neighbours;
 
-import java.util.Enumeration;
-
 import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
 import net.sf.cpsolver.ifs.model.Model;
 import net.sf.cpsolver.ifs.model.Neighbour;
@@ -24,12 +22,12 @@ import net.sf.cpsolver.itc.tim.model.TimStudent;
  * ITC2007 1.0<br>
  * Copyright (C) 2007 Tomas Muller<br>
  * <a href="mailto:muller@unitime.org">muller@unitime.org</a><br>
- * Lazenska 391, 76314 Zlin, Czech Republic<br>
+ * <a href="http://muller.unitime.org">http://muller.unitime.org</a><br>
  * <br>
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * version 3 of the License, or (at your option) any later version.
  * <br><br>
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -37,46 +35,41 @@ import net.sf.cpsolver.itc.tim.model.TimStudent;
  * Lesser General Public License for more details.
  * <br><br>
  * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * License along with this library; if not see
+ * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class TimRandomMove implements NeighbourSelection {
+public class TimRandomMove implements NeighbourSelection<TimEvent, TimLocation> {
     
     /** Constructor */
     public TimRandomMove(DataProperties properties) {
     }
     /** Initialization */
-    public void init(Solver solver) {}
+    public void init(Solver<TimEvent, TimLocation> solver) {}
     
     /** Neighbour selection */
-    public Neighbour selectNeighbour(Solution solution) {
-        Model model = solution.getModel();
+    public Neighbour<TimEvent, TimLocation> selectNeighbour(Solution<TimEvent, TimLocation> solution) {
+        Model<TimEvent, TimLocation> model = solution.getModel();
         TimEvent evt = (TimEvent)ToolBox.random(model.variables());
-        TimLocation loc = (TimLocation)evt.getAssignment();
+        TimLocation loc = evt.getAssignment();
         int slot = ToolBox.random(45);
         if (!evt.isAvailable(slot)) return null;
         if (loc!=null && loc.time()==slot) return null;
         return findChange(evt, slot, (loc==null?null:loc.room()));
     }
-    
-    private static ItcSimpleNeighbour findChange(TimEvent event, int slot) {
-        return findChange(event, slot, null);
-    }
-    
-    private static ItcSimpleNeighbour findChange(TimEvent event, int slot, TimRoom prefRoom) {
+        
+    private static ItcSimpleNeighbour<TimEvent, TimLocation> findChange(TimEvent event, int slot, TimRoom prefRoom) {
         TimLocation loc = (TimLocation)event.getAssignment();
         if (loc==null || loc.time()!=slot)
-            for (Enumeration e=event.students().elements();e.hasMoreElements();) {
-                TimStudent s = (TimStudent)e.nextElement();
+            for (TimStudent s: event.students()) {
                 if (s.getTable()[slot]!=null) return null;
             }
         if (prefRoom!=null && prefRoom.getLocation(slot)==null)
-            return new ItcSimpleNeighbour(event, new TimLocation(event,slot,prefRoom));
+            return new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event,slot,prefRoom));
         int rx = ToolBox.random(event.rooms().size());
         for (int r=0;r<event.rooms().size();r++) {
-            TimRoom room = (TimRoom)event.rooms().elementAt((r+rx)%event.rooms().size());
+            TimRoom room = event.rooms().get((r+rx)%event.rooms().size());
             if (room.getLocation(slot)==null) 
-                return new ItcSimpleNeighbour(event, new TimLocation(event,slot,room));
+                return new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event,slot,room));
         }
         return null;
     }
