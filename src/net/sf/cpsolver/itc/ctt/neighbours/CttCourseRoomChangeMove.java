@@ -92,10 +92,12 @@ public class CttCourseRoomChangeMove implements NeighbourSelection<CttLecture, C
                 CttPlacement placement = (CttPlacement)lecture.getAssignment();
                 if (placement==null) continue;
                 CttPlacement conflict = iRoom.getConstraint().getPlacement(placement.getDay(), placement.getSlot());
-                if (conflict!=null)
+                if (conflict!=null) {
+                	lecture.unassign(iteration);
                     conflict.variable().assign(iteration,
                             new CttPlacement((CttLecture)conflict.variable(), 
                                     placement.getRoom(), placement.getDay(), placement.getSlot()));
+                }
                 lecture.assign(iteration, 
                         new CttPlacement(lecture, 
                                 iRoom, placement.getDay(), placement.getSlot()));
