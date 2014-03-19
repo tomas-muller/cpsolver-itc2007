@@ -671,13 +671,12 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
         });
         orderedExams.addAll(variables());
         out.println("Front load threshold is "+iFronLoadThreshold+" ("+getPeriod(iFronLoadThreshold)+")");
-        int notScheduled = 0, roomPenaltyCnt = 0, roomPenalty = 0, periodPenaltyCnt = 0, periodPenalty = 0, twoInRow = 0, 
+        int roomPenaltyCnt = 0, roomPenalty = 0, periodPenaltyCnt = 0, periodPenalty = 0, twoInRow = 0, 
             twoInDay = 0, twoInRowCnt = 0, twoInDayCnt = 0, widerSpreadCnt = 0, widerSpread = 0, frontLoad = 0; 
         for (ExExam exam: variables()) {
             ExPlacement placement = (ExPlacement)exam.getAssignment();
             if (placement==null) {
                 out.println("Exam "+exam.getId()+": not scheduled");
-                notScheduled++;
             } else {
                 out.println("Exam "+exam.getId()+": "+placement.getPeriod()+" room "+placement.getRoom().getId()+" (length "+exam.getLength()+", students "+exam.getStudents().size()+(exam.isLargest()?", "+(1+iLargestExams.indexOf(exam))+". largest":"")+")");
                 if (placement.getRoom().getPenalty()>0)  {
