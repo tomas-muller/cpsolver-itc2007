@@ -68,7 +68,7 @@ import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.NeighbourSelector;
  * is returned (so that an improvement of the best solution made by some other search
  * strategy is considered as well).
  * <br><br>
- * When GreatDeluge.Update is true, {@link NeighbourSelector#update(Neighbour, long)} is called 
+ * When GreatDeluge.Update is true, {@link NeighbourSelector#update(Assignment, Neighbour, long)} is called 
  * after each iteration (on the selector that was used) and roulette wheel selection 
  * that is using {@link NeighbourSelector#getPoints()} is used to pick a selector in each iteration. 
  * See {@link NeighbourSelector} for more details. 

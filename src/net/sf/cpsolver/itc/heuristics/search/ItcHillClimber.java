@@ -46,7 +46,7 @@ import org.apache.log4j.Logger;
  * Selector TimPrecedenceMove is 10&times; less probable to be selected than other selectors.
  * When SimulatedAnnealing.Random is true, all selectors are selected with the same probability, ignoring these weights.
  * <br><br>
- * When HillClimber.Update is true, {@link NeighbourSelector#update(Neighbour, long)} is called 
+ * When HillClimber.Update is true, {@link NeighbourSelector#update(Assignment, Neighbour, long)} is called 
  * after each iteration (on the selector that was used) and roulette wheel selection 
  * that is using {@link NeighbourSelector#getPoints()} is used to pick a selector in each iteration. 
  * See {@link NeighbourSelector} for more details. 
@@ -274,9 +274,9 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> ext
         public int nrCalls() { return iNrCalls; }
         /** Number of returned not-null moves */
         public int nrNotNull() { return iNrNotNull; }
-        /** Number of returned moves with zero improvement of the solution (i.e., {@link Neighbour#value()} = 0)*/
+        /** Number of returned moves with zero improvement of the solution (i.e., {@link Neighbour#value(Assignment)} = 0)*/
         public int nrSideMoves() { return iNrSideMoves; }
-        /** Number of returned improving moves (i.e., {@link Neighbour#value()} < 0)*/
+        /** Number of returned improving moves (i.e., {@link Neighbour#value(Assignment)} < 0)*/
         public int nrImprovingMoves() { return iNrImprovingMoves; }
         /** Total time spend in {@link NeighbourSelection#selectNeighbour(Solution)} (in milliseconds) */
         public long time() { return iTime; }

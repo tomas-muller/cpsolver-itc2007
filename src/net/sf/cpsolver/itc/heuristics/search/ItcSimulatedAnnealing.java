@@ -48,7 +48,7 @@ import org.apache.log4j.Logger;
  * stochastic hill climbing criterion, i.e., <code>1.0 / (1.0 + Math.exp(value/temperature))</code>,
  * otherwise it is cumputed using simlated annealing criterion, i.e.,
  * <code>(value<=0.0?1.0:Math.exp(-value/temperature))</code>.
- * If <i>SimulatedAnnealing.RelativeAcceptance</i> neighbour value {@link ExamSimpleNeighbour#value()} is taken
+ * If <i>SimulatedAnnealing.RelativeAcceptance</i> neighbour value {@link ExamSimpleNeighbour#value(Assignment)} is taken
  * as the value of the selected neighbour (difference between the new and the current solution, if the
  * neighbour is accepted), otherwise the value is computed as the difference
  * between the value of the current solution if the neighbour is accepted and the best ever found solution.
@@ -68,7 +68,7 @@ import org.apache.log4j.Logger;
  * When Itc.NextHeuristicsOnReheat parameter is true, a chance is given to another
  * search strategy by returning once null in {@link ItcSimulatedAnnealing#selectNeighbour(Solution)}.
  * <br><br>
- * When SimulatedAnnealing.Update is true, {@link NeighbourSelector#update(Neighbour, long)} is called 
+ * When SimulatedAnnealing.Update is true, {@link NeighbourSelector#update(Assignment, Neighbour, long)} is called 
  * after each iteration (on the selector that was used) and roulette wheel selection 
  * that is using {@link NeighbourSelector#getPoints()} is used to pick a selector in each iteration. 
  * See {@link NeighbourSelector} for more details. 
