@@ -3,8 +3,10 @@ package net.sf.cpsolver.itc.ctt.model;
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.model.Constraint;
-import net.sf.cpsolver.ifs.model.ConstraintListener;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.ConstraintWithContext;
+import org.cpsolver.ifs.model.ConstraintListener;
 
 /**
  * Representation of a room. Two lectures cannot be placed into the same room 
@@ -89,37 +91,32 @@ public class CttRoom {
     /** Room constraint. This hard constraint ensures that no two lectures
      * are placed into this room at the same time. 
      */ 
-    public class RoomConstraint extends Constraint<CttLecture, CttPlacement> {
-        public CttPlacement[][] iPlacement;
+    public class RoomConstraint extends ConstraintWithContext<CttLecture, CttPlacement, CttRoom.Table> {
         
         /** Constructor */
         public RoomConstraint() {
             super();
-            iAssignedVariables = null;
-            iPlacement = new CttPlacement[iModel.getNrDays()][iModel.getNrSlotsPerDay()];
-            for (int d=0;d<iModel.getNrDays();d++)
-                for (int s=0;s<iModel.getNrSlotsPerDay();s++)
-                    iPlacement[d][s] = null;
-            
         }
         
         /** 
          * Compute conflicts, i.e., placements of another lecture that is using 
          * this room at the time of the given placement (if any).
          */
-        public void computeConflicts(CttPlacement p, Set<CttPlacement> conflicts) {
+        public void computeConflicts(Assignment<CttLecture, CttPlacement> assignment, CttPlacement p, Set<CttPlacement> conflicts) {
             if (!p.getRoom().equals(CttRoom.this)) return; 
-            if (iPlacement[p.getDay()][p.getSlot()]!=null && !iPlacement[p.getDay()][p.getSlot()].variable().equals(p.variable()))
-                conflicts.add(iPlacement[p.getDay()][p.getSlot()]);
+        	CttPlacement conflict = getPlacement(assignment, p.getDay(), p.getSlot());
+            if (conflict != null && !conflict.variable().equals(p.variable()))
+                conflicts.add(conflict);
         }
         
         /** 
          * Check for conflicts, i.e., true, if there is another lecture that is using 
          * this room at the time of the given placement.
          */
-        public boolean inConflict(CttPlacement p) {
+        public boolean inConflict(Assignment<CttLecture, CttPlacement> assignment, CttPlacement p) {
             if (!p.getRoom().equals(CttRoom.this)) return false; 
-            return iPlacement[p.getDay()][p.getSlot()]!=null && !iPlacement[p.getDay()][p.getSlot()].variable().equals(p.variable());
+        	CttPlacement conflict = getPlacement(assignment, p.getDay(), p.getSlot());
+            return conflict != null && !conflict.variable().equals(p.variable());
         }
         
         /**
@@ -133,27 +130,28 @@ public class CttRoom {
         }
         
         /** Update placement of lectures into this room */
-        public void assigned(long iteration, CttPlacement p) {
+        public void assigned(Assignment<CttLecture, CttPlacement> assignment, long iteration, CttPlacement p) {
             //super.assigned(iteration, value);
             if (p.getRoom().equals(CttRoom.this)) {
-                if (iPlacement[p.getDay()][p.getSlot()]!=null) {
-                    Set<CttPlacement> confs = new HashSet<CttPlacement>(); confs.add(iPlacement[p.getDay()][p.getSlot()]);
-                    iPlacement[p.getDay()][p.getSlot()].variable().unassign(iteration);
-                    iPlacement[p.getDay()][p.getSlot()] = p;
-                    if (iConstraintListeners!=null)
-                        for (ConstraintListener<CttPlacement> listener: iConstraintListeners)
-                            listener.constraintAfterAssigned(iteration, this, p, confs);
-                } else {
-                    iPlacement[p.getDay()][p.getSlot()] = p;
+                Table table = getContext(assignment);
+            	CttPlacement conflict = table.getPlacement(p.getDay(), p.getSlot());
+                if (conflict != null) {
+                    assignment.unassign(iteration, conflict.variable());
+                    if (iConstraintListeners != null && !iConstraintListeners.isEmpty()) {
+                        Set<CttPlacement> confs = new HashSet<CttPlacement>(); confs.add(conflict);
+                        for (ConstraintListener<CttLecture, CttPlacement> listener: iConstraintListeners)
+                            listener.constraintAfterAssigned(assignment, iteration, this, p, confs);
+                    }
                 }
+                table.assigned(assignment, p);
             }
         }
         
         /** Update placement of lectures into this room */
-        public void unassigned(long iteration, CttPlacement p) {
+        public void unassigned(Assignment<CttLecture, CttPlacement> assignment, long iteration, CttPlacement p) {
             //super.unassigned(iteration, value);
             if (p.getRoom().equals(CttRoom.this))
-                iPlacement[p.getDay()][p.getSlot()] = null;
+            	getContext(assignment).unassigned(assignment, p);
         }
         
         /** String representation */
@@ -167,8 +165,40 @@ public class CttRoom {
         }
         
         /** Placement of a lecture into this room at given day and time */
-        public CttPlacement getPlacement(int day, int slot) {
-            return iPlacement[day][slot];
+        public CttPlacement getPlacement(Assignment<CttLecture, CttPlacement> assignment, int d, int s) {
+            return getContext(assignment).getPlacement(d, s);
         }
+
+		@Override
+		public Table createAssignmentContext(Assignment<CttLecture, CttPlacement> assignment) {
+			return new Table(assignment);
+		}
+    }
+    
+    private class Table implements AssignmentConstraintContext<CttLecture, CttPlacement> {
+        public CttPlacement[] iPlacement;
+        
+        public Table(Assignment<CttLecture, CttPlacement> assignment) {
+            iPlacement = new CttPlacement[iModel.getNrDays() * iModel.getNrSlotsPerDay()];
+            for (int i = 0; i < iPlacement.length; i++)
+            	iPlacement[i] = null;
+			for (CttPlacement p: assignment.assignedValues())
+				if (p.getRoom().equals(CttRoom.this))
+					assigned(assignment, p);
+		}
+
+		@Override
+		public void assigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement p) {
+			iPlacement[p.getDay() * iModel.getNrSlotsPerDay() + p.getSlot()] = p;
+		}
+
+		@Override
+		public void unassigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement p) {
+			iPlacement[p.getDay() * iModel.getNrSlotsPerDay() + p.getSlot()] = null;
+		}
+		
+		public CttPlacement getPlacement(int day, int slot) {
+			return iPlacement[day * iModel.getNrSlotsPerDay() + slot];
+		}
     }
 }

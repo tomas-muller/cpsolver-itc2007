@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
 
 /**
  * Representation of Post Enrollment based Course Timetabling (tim) problem model.
@@ -44,9 +46,6 @@ public class TimModel extends TTComp02Model {
     public static int sPrecedenceViolationWeight = 0;
     /** Weight of events withou assigned room */
     public static int sNoRoomWeight = 0;
-    
-    private int iPrecedenceViolations = 0;
-    private int iNoRoomViolations = 0;
     
     /** Constructor */
     public TimModel() {
@@ -159,25 +158,22 @@ public class TimModel extends TTComp02Model {
         }
 		
         for (TimEvent event: variables())
-            event.init(isAllowProhibitedTime(),isAllowNoRoom());
+            event.init(getEmptyAssignment(), isAllowProhibitedTime(),isAllowNoRoom());
 		
 		in.close();
 		
 		if ("true".equals(System.getProperty("stats"))) 
 		    stats(file.getName());
 		
-		if (System.getProperty("solution")!=null)
-		    loadSolution(new File(System.getProperty("solution")));
-		
 		return true;
 	}
     
     /** Overall solution value (violated precedence constraints, used not available times, assignment without room are added as well)*/
-    public double getTotalValue() {
+    public double getTotalValue(Assignment<TimEvent, TimLocation> assignment) {
         return 
-            super.getTotalValue() + 
-            sPrecedenceViolationWeight*precedenceViolations(false) + 
-            sNoRoomWeight*noRoomViolations(false);
+            super.getTotalValue(assignment) + 
+            sPrecedenceViolationWeight*precedenceViolations(assignment, false) + 
+            sNoRoomWeight*noRoomViolations(assignment, false);
     }
     
     private void stats(String instance) {
@@ -268,40 +264,40 @@ public class TimModel extends TTComp02Model {
      * use of last time of a day,
      * more three or more events consecutively
      */
-    public String csvLine() {
+    public String csvLine(Assignment<TimEvent, TimLocation> assignment) {
         return 
-            distanceToFeasibility()+","+
-            precedenceViolations(false)+(precedenceViolations(false)>0 && sPrecedenceViolationWeight!=5000?"/"+sPrecedenceViolationWeight:"")+","+
-            noRoomViolations(false)+(noRoomViolations(false)>0 && sNoRoomWeight!=5000?"/"+sNoRoomWeight:"")+","+
-            super.csvLine();
+            distanceToFeasibility(assignment)+","+
+            precedenceViolations(assignment, false)+(precedenceViolations(assignment, false)>0 && sPrecedenceViolationWeight!=5000?"/"+sPrecedenceViolationWeight:"")+","+
+            noRoomViolations(assignment, false)+(noRoomViolations(assignment, false)>0 && sNoRoomWeight!=5000?"/"+sNoRoomWeight:"")+","+
+            super.csvLine(assignment);
     }
     
     /**
      * Distance to feasibility
      * @return sum of numbers of students of unassigned events
      */
-    public int distanceToFeasibility() {
-        if (nrUnassignedVariables()==0) return 0;
+    public int distanceToFeasibility(Assignment<TimEvent, TimLocation> assignment) {
+        if (nrUnassignedVariables(assignment)==0) return 0;
         int df=0;
-        for (TimEvent event: unassignedVariables())
+        for (TimEvent event: unassignedVariables(assignment))
             df+=event.students().size();
         return df;
     }
     
     /** Solution info -- added solution criteria (soft constraint violations)*/
-    public Map<String, String> getInfo() {
-    	Map<String, String> info = super.getInfo();
-        info.put("Precedence violations",String.valueOf(precedenceViolations(false)));
-        info.put("No room violations",String.valueOf(noRoomViolations(false)));
+    public Map<String, String> getInfo(Assignment<TimEvent, TimLocation> assignment) {
+    	Map<String, String> info = super.getInfo(assignment);
+        info.put("Precedence violations",String.valueOf(precedenceViolations(assignment, false)));
+        info.put("No room violations",String.valueOf(noRoomViolations(assignment, false)));
         return info;
     }
     
     /** Solution info -- added solution criteria (soft constraint violations, precise computation)*/
-    public Map<String, String> getExtendedInfo() {
-    	Map<String, String> info = super.getExtendedInfo();
-        info.put("Precedence violations [p]",String.valueOf(precedenceViolations(true)));
-        info.put("No room violations [p]",String.valueOf(noRoomViolations(true)));
-        info.put("Distance to feasibility",String.valueOf(distanceToFeasibility()));
+    public Map<String, String> getExtendedInfo(Assignment<TimEvent, TimLocation> assignment) {
+    	Map<String, String> info = super.getExtendedInfo(assignment);
+        info.put("Precedence violations [p]",String.valueOf(precedenceViolations(assignment, true)));
+        info.put("No room violations [p]",String.valueOf(noRoomViolations(assignment, true)));
+        info.put("Distance to feasibility",String.valueOf(distanceToFeasibility(assignment)));
         return info;
     }
 
@@ -311,12 +307,12 @@ public class TimModel extends TTComp02Model {
     }
     
     /** Number of violated precedence constraints */
-    public int precedenceViolations(boolean precise) {
-        if (!precise) return iPrecedenceViolations;
+    public int precedenceViolations(Assignment<TimEvent, TimLocation> assignment, boolean precise) {
+        if (!precise) return ((TimContext)getContext(assignment)).precedenceViolations();
         int violations = 0;
         for (TimPrecedence precedence: iPrecedences) {
             if (precedence.isHardPrecedence()) continue;
-            if (!precedence.isSatisfied())
+            if (!precedence.isSatisfied(assignment))
                 violations++;
                 //violations+=Math.min(((TimEvent)precedence.first()).students().size(),((TimEvent)precedence.second()).students().size());
         }
@@ -327,59 +323,41 @@ public class TimModel extends TTComp02Model {
      * Number of assignments without room, i.e., placements with {@link TimLocation#room()} set to null
      * (use of assignments without is only permitted when parameter Tim.AllowNoRoom is set to true)
      */
-    public int noRoomViolations(boolean precise) {
-        if (!precise) return iNoRoomViolations;
+    public int noRoomViolations(Assignment<TimEvent, TimLocation> assignment, boolean precise) {
+        if (!precise) return ((TimContext)getContext(assignment)).noRoomViolations();
         int violations = 0;
-        for (TimEvent event: assignedVariables()) {
-            TimLocation location = (TimLocation)event.getAssignment();
+        for (TimEvent event: assignedVariables(assignment)) {
+            TimLocation location = (TimLocation)event.getAssignment(assignment);
             if (location.room()==null) violations++;//violations+=event.students().size();
         }
         return violations;
     }
 
     /**
-     * Update counters on unassignment of an event
-     */
-    public void afterUnassigned(long iteration, TimLocation location) {
-        super.afterUnassigned(iteration, location);
-        iPrecedenceViolations -= location.precedenceViolations();
-        if (location.room()==null) iNoRoomViolations--;//-=event.students().size();
-    }
-    
-    /**
-     * Update counters on assignment of an event
-     */
-    public void beforeAssigned(long iteration, TimLocation location) {
-        super.beforeAssigned(iteration, location);
-        iPrecedenceViolations += location.precedenceViolations();
-        if (location.room()==null) iNoRoomViolations++;//+=event.students().size();
-    }
-    
-    /**
      * Set precedence constraint violations weight, assignments without room weight to 5000.
      * Also, unassign events that have no rooms or violate precedence constraints (unless
      * system property unassign is set to false).
      */
-    public void makeFeasible() {
+    public void makeFeasible(Assignment<TimEvent, TimLocation> assignment) {
         sNoRoomWeight = 5000;
         sPrecedenceViolationWeight = 5000;
         if ("true".equals(System.getProperty("unassign","true"))) {
-            sLog.info("**RESULT** V:"+nrAssignedVariables()+"/"+variables().size()+", P:"+Math.round(getTotalValue())+" ("+csvLine()+")");
+            sLog.info("**RESULT** V:"+nrAssignedVariables(assignment)+"/"+variables().size()+", P:"+Math.round(getTotalValue(assignment))+" ("+csvLine(assignment)+")");
             for (TimEvent event: variables()) {
-                TimLocation loc = (TimLocation)event.getAssignment();
+                TimLocation loc = (TimLocation)assignment.getValue(event);
                 if (loc==null) continue;
-                if (loc.room()==null) event.unassign(0);
+                if (loc.room()==null) assignment.unassign(0, event);
             }
             for (TimPrecedence pr: getPrecedences()) {
-                if (pr.isSatisfied()) continue;
+                if (pr.isSatisfied(assignment)) continue;
                 TimEvent first = (TimEvent)pr.first();
                 TimEvent second = (TimEvent)pr.second();
                 if (first.students().size()<second.students().size())
-                    first.unassign(0);
+                    assignment.unassign(0, first);
                 else
-                    second.unassign(0);
+                    assignment.unassign(0, second);
             }
-            sLog.info("**RESULT** V:"+nrAssignedVariables()+"/"+variables().size()+", P:"+Math.round(getTotalValue())+" ("+csvLine()+")");
+            sLog.info("**RESULT** V:"+nrAssignedVariables(assignment)+"/"+variables().size()+", P:"+Math.round(getTotalValue(assignment))+" ("+csvLine(assignment)+")");
         }
     }
     
@@ -387,4 +365,51 @@ public class TimModel extends TTComp02Model {
     public boolean cvsPrint() {
         return true;
     }
+    
+    public class TimContext extends TTComp02Context {
+        private int iPrecedenceViolations = 0;
+        private int iNoRoomViolations = 0;
+        
+    	public TimContext(Assignment<TimEvent, TimLocation> assignment) {
+    		super(assignment);
+    	}
+
+        /**
+         * Update counters on assignment of an event
+         */
+		@Override
+		public void assigned(Assignment<TimEvent, TimLocation> assignment, TimLocation location) {
+			super.assigned(assignment, location);
+	        iPrecedenceViolations += location.precedenceViolations(assignment);
+	        if (location.room() == null) iNoRoomViolations++;
+		}
+
+	    /**
+	     * Update counters on unassignment of an event
+	     */
+		@Override
+		public void unassigned(Assignment<TimEvent, TimLocation> assignment, TimLocation location) {
+			super.unassigned(assignment, location);
+	        iPrecedenceViolations -= location.precedenceViolations(assignment);
+	        if (location.room() == null) iNoRoomViolations--;
+		}
+		
+	    /** Number of violated precedence constraints */
+	    public int precedenceViolations() {
+	    	return iPrecedenceViolations;
+	    }
+	    
+	    /**
+	     * Number of assignments without room, i.e., placements with {@link TimLocation#room()} set to null
+	     * (use of assignments without is only permitted when parameter Tim.AllowNoRoom is set to true)
+	     */
+	    public int noRoomViolations() {
+	        return iNoRoomViolations;
+	    }   	
+    }
+    
+	@Override
+	public AssignmentConstraintContext<TimEvent, TimLocation> createAssignmentContext(Assignment<TimEvent, TimLocation> assignment) {
+		return new TimContext(assignment);
+	}
 }

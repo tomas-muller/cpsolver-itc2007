@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.tim.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection;
@@ -56,20 +57,21 @@ public class TimPrecedenceMove implements NeighbourSelection<TimEvent, TimLocati
     /** Neighbour selection */
     public Neighbour<TimEvent, TimLocation> selectNeighbour(Solution<TimEvent, TimLocation> solution) {
         TimModel model = (TimModel)solution.getModel();
-        if (model.precedenceViolations(false)<=0) return null;
+        Assignment<TimEvent, TimLocation> assignment = solution.getAssignment();
+        if (model.precedenceViolations(assignment, false)<=0) return null;
         int px = ToolBox.random(model.getPrecedences().size());
         for (int p=0;p<model.getPrecedences().size();p++) {
             TimPrecedence precedence = model.getPrecedences().get((p+px)%model.getPrecedences().size());
             if (precedence.isHardPrecedence()) continue;
-            if (precedence.isSatisfied()) continue;
+            if (precedence.isSatisfied(assignment)) continue;
             int swap = ToolBox.random(3);
             if (swap==0) {
-                Neighbour<TimEvent, TimLocation> n = ((Swapable<TimEvent, TimLocation>)precedence.first()).findSwap(precedence.second());
+                Neighbour<TimEvent, TimLocation> n = ((Swapable<TimEvent, TimLocation>)precedence.first()).findSwap(assignment, precedence.second());
                 if (n!=null) return n;
             }
             TimEvent event = (TimEvent)(ToolBox.random(2)==0?precedence.first():precedence.second());
             TimEvent other = (TimEvent)precedence.another(event);
-            TimLocation otherLoc = (TimLocation)other.getAssignment();
+            TimLocation otherLoc = (TimLocation)assignment.getValue(other);
             int tx = ToolBox.random(45);
             int rx = ToolBox.random(event.rooms().size());
             boolean swapRoom = (ToolBox.random(2)==0);
@@ -78,27 +80,27 @@ public class TimPrecedenceMove implements NeighbourSelection<TimEvent, TimLocati
                 if (!event.isAvailable(time)) continue;
                 if (!precedence.isConsistent(otherLoc,t)) continue;
                 for (TimStudent student: event.students()) {
-                    if (student.getLocation(time)!=null) continue time;
+                    if (student.getLocation(assignment, time)!=null) continue time;
                 }
                 for (int r=0;r<event.rooms().size();r++) {
                     TimRoom room = event.rooms().get((r+rx)%event.rooms().size());
-                    if (room.getLocation(time)!=null) {
+                    if (room.getLocation(assignment, time)!=null) {
                         if (swapRoom) {
-                            Neighbour<TimEvent, TimLocation> n = event.findSwap(room.getLocation(time).variable());
+                            Neighbour<TimEvent, TimLocation> n = event.findSwap(assignment, room.getLocation(assignment, time).variable());
                             if (n!=null) return n;
                         }
                     } else {
-                        Neighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event, time, room));                    
-                        if (!iHC || n.value()<=0) return n;
+                        Neighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(assignment, event, new TimLocation(event, time, room));                    
+                        if (!iHC || n.value(assignment)<=0) return n;
                     }
                 }
             }
             if (swap==1) {
-                Neighbour<TimEvent, TimLocation> n = ((Swapable<TimEvent, TimLocation>)precedence.first()).findSwap(precedence.second());
+                Neighbour<TimEvent, TimLocation> n = ((Swapable<TimEvent, TimLocation>)precedence.first()).findSwap(assignment, precedence.second());
                 if (n!=null) return n;
             }
             TimEvent x=event; event=other; other=x;
-            otherLoc = (TimLocation)other.getAssignment();
+            otherLoc = (TimLocation)assignment.getValue(other);
             tx = ToolBox.random(45);
             rx = ToolBox.random(event.rooms().size());
             time: for (int t=0;t<45;t++) {
@@ -106,23 +108,23 @@ public class TimPrecedenceMove implements NeighbourSelection<TimEvent, TimLocati
                 if (!event.isAvailable(time)) continue;
                 if (!precedence.isConsistent(otherLoc,t)) continue;
                 for (TimStudent student: event.students()) {
-                    if (student.getLocation(time)!=null) continue time;
+                    if (student.getLocation(assignment, time)!=null) continue time;
                 }
                 for (int r=0;r<event.rooms().size();r++) {
                     TimRoom room = event.rooms().get((r+rx)%event.rooms().size());
-                    if (room.getLocation(time)!=null) {
+                    if (room.getLocation(assignment, time)!=null) {
                         if (swapRoom) {
-                            Neighbour<TimEvent, TimLocation> n = event.findSwap(room.getLocation(time).variable());
+                            Neighbour<TimEvent, TimLocation> n = event.findSwap(assignment, room.getLocation(assignment, time).variable());
                             if (n!=null) return n;
                         }
                     } else {
-                        Neighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event, time, room));                    
-                        if (!iHC || n.value()<=0) return n;
+                        Neighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(assignment, event, new TimLocation(event, time, room));                    
+                        if (!iHC || n.value(assignment)<=0) return n;
                     }
                 }
             }
             if (swap==2) {
-                Neighbour<TimEvent, TimLocation> n = ((Swapable<TimEvent, TimLocation>)precedence.first()).findSwap(precedence.second());
+                Neighbour<TimEvent, TimLocation> n = ((Swapable<TimEvent, TimLocation>)precedence.first()).findSwap(assignment, precedence.second());
                 if (n!=null) return n;
             }
         }

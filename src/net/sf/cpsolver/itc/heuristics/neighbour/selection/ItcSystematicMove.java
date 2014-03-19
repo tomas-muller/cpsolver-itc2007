@@ -7,15 +7,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Model;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Model;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
 
@@ -72,6 +73,7 @@ public class ItcSystematicMove<V extends Variable<V, T>, T extends Value<V, T>> 
     @SuppressWarnings("unchecked")
 	public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
         Model<V,T> model = solution.getModel();
+        Assignment<V, T> assignment = solution.getAssignment();
         if (iVarEn==null) {
             iVarEn = new RandomIterator<V>(model.variables(), iRandomOrder);
             iVariable = iVarEn.next();
@@ -96,17 +98,18 @@ public class ItcSystematicMove<V extends Variable<V, T>, T extends Value<V, T>> 
         if (object instanceof Variable) {
             V anotherVariable = (V)ToolBox.random(model.variables());
             if (iVariable.equals(anotherVariable)) return null;
-            return ((Swapable<V,T>)iVariable).findSwap(anotherVariable);
+            return ((Swapable<V,T>)iVariable).findSwap(assignment, anotherVariable);
         } else {
             T value = (T)object;
-            if (value.equals(iVariable.getAssignment())) return null;
-            double eval = iValueWeight * value.toDouble();
-            if (iVariable.getAssignment()!=null)
-                eval -= iValueWeight * iVariable.getAssignment().toDouble();
+            T old = assignment.getValue(iVariable);
+            if (value.equals(old)) return null;
+            double eval = iValueWeight * value.toDouble(assignment);
+            if (old!=null)
+                eval -= iValueWeight * old.toDouble(assignment);
             else
                 eval -= iConflictWeight;
-            eval += iConflictWeight * model.conflictValues(value).size();
-            return new ItcSimpleNeighbour<V,T>(iVariable,value,eval);
+            eval += iConflictWeight * model.conflictValues(assignment, value).size();
+            return new ItcSimpleNeighbour<V,T>(assignment,iVariable,value,eval);
         }
     }
     

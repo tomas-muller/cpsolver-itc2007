@@ -8,19 +8,22 @@ import java.util.TreeSet;
 
 import org.apache.log4j.Logger;
 
-import net.sf.cpsolver.ifs.extension.ConflictStatistics;
-import net.sf.cpsolver.ifs.extension.Extension;
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.heuristics.ValueSelection;
-import net.sf.cpsolver.ifs.model.Model;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.SimpleNeighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentContext;
+import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
+import org.cpsolver.ifs.extension.ConflictStatistics;
+import org.cpsolver.ifs.extension.Extension;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.heuristics.ValueSelection;
+import org.cpsolver.ifs.model.Model;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.SimpleNeighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 
 /**
  * Tabu search algorithm. 
@@ -70,7 +73,7 @@ import net.sf.cpsolver.ifs.util.ToolBox;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T>, ValueSelection<V,T> {
+public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> extends NeighbourSelectionWithContext<V,T,ItcTabuSearch<V,T>.TabuList> implements ValueSelection<V,T> {
     private static Logger sLog = Logger.getLogger(ItcTabuSearch.class);
     private ConflictStatistics<V,T> iStat = null;
 
@@ -79,7 +82,6 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
 
     private int iTabuMinSize = 20;
     private int iTabuMaxSize = 200;
-    private TabuList iTabu = null;
     
     private double iConflictWeight = 100;
     private double iValueWeight = 1;
@@ -97,7 +99,6 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
     public ItcTabuSearch(DataProperties properties) throws Exception {
         iTabuMinSize = properties.getPropertyInt("TabuSearch.MinSize", iTabuMinSize);
         iTabuMaxSize = properties.getPropertyInt("TabuSearch.MaxSize", iTabuMaxSize);
-        if (iTabuMaxSize > 0) iTabu = new TabuList(iTabuMinSize);
         iMaxIdleIterations = properties.getPropertyLong("TabuSearch.MaxIdle", iMaxIdleIterations);
         iConflictWeight = properties.getPropertyDouble("Value.ConflictWeight", iConflictWeight);
         iValueWeight = properties.getPropertyDouble("Value.ValueWeight", iValueWeight);
@@ -105,6 +106,7 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
     
     /** Initialization */
     public void init(Solver<V,T> solver) {
+    	super.init(solver);
         for (Extension<V, T> extension: solver.getExtensions())
             if (extension instanceof ConflictStatistics)
                 iStat = (ConflictStatistics<V,T>)extension;
@@ -123,20 +125,22 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
      * Neighbor selection 
      */
     public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
+    	Assignment<V, T> assignment = solution.getAssignment();
+    	TabuList tabu = getContext(assignment);
         if (iFirstIteration<0)
             iFirstIteration = solution.getIteration();
         long idle = solution.getIteration()-Math.max(iFirstIteration,solution.getBestIteration()); 
         if (idle>iMaxIdleIterations) {
             sLog.debug("  [tabu]    max idle iterations reached");
             iFirstIteration=-1;
-            if (iTabu!=null) iTabu.clear();
+            if (tabu.size() > 0) tabu.clear();
             return null;
         }
-        if (iTabu!=null && iTabuMaxSize>iTabuMinSize) {
+        if (tabu.size() > 0 && iTabuMaxSize>iTabuMinSize) {
             if (idle==0) {
-                iTabu.resize(iTabuMinSize);
+            	tabu.resize(iTabuMinSize);
             } else if (idle%(iMaxIdleIterations/(iTabuMaxSize-iTabuMinSize))==0) { 
-                iTabu.resize(Math.min(iTabuMaxSize,iTabu.size()+1));
+            	tabu.resize(Math.min(iTabuMaxSize,tabu.size()+1));
             }
         }
         
@@ -145,24 +149,24 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
         double bestEval = 0.0;
         List<T> best = null;
         for (V variable: model.variables()) {
-            T assigned = variable.getAssignment();
-            double assignedVal = (assigned==null?iConflictWeight:iValueWeight*assigned.toDouble());
+            T assigned = assignment.getValue(variable);
+            double assignedVal = (assigned==null?iConflictWeight:iValueWeight*assigned.toDouble(assignment));
             for (T value: variable.values()) {
                 if (value.equals(assigned)) continue;
-                double eval = iValueWeight*value.toDouble() - assignedVal;
+                double eval = iValueWeight*value.toDouble(assignment) - assignedVal;
                 if (acceptConflicts) {
-                    Set<T> conflicts = model.conflictValues(value);
+                    Set<T> conflicts = model.conflictValues(assignment, value);
                     for (T conflict: conflicts) {
-                        eval -= iValueWeight*conflict.toDouble();
+                        eval -= iValueWeight*conflict.toDouble(assignment);
                         eval += iConflictWeight * (1.0+(iStat==null?0.0:iStat.countRemovals(solution.getIteration(), conflict, value)));
                     }
                 } else {
-                    if (model.inConflict(value)) continue;
+                    if (model.inConflict(assignment, value)) continue;
                 }
-                if (iTabu!=null && iTabu.contains(tabuElement(value))) {
-                    int un = model.nrUnassignedVariables()-(assigned==null?0:1);
+                if (tabu.size() > 0 && tabu.contains(tabuElement(value))) {
+                    int un = assignment.nrUnassignedVariables(model)-(assigned==null?0:1);
                     if (un>model.getBestUnassignedVariables()) continue;
-                    if (un==model.getBestUnassignedVariables() && model.getTotalValue()+eval>=solution.getBestValue()) continue;
+                    if (un==model.getBestUnassignedVariables() && model.getTotalValue(assignment)+eval>=model.getBestValue()) continue;
                 }
                 if (best==null || bestEval>eval) {
                     if (best==null)
@@ -180,19 +184,20 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
         if (best==null) {
             sLog.debug("  [tabu] --none--");
             iFirstIteration=-1;
-            if (iTabu!=null) iTabu.clear();
+            if (tabu.size() > 0) tabu.clear();
             return null;
         }
         T bestVal = ToolBox.random(best);
         
         if (sLog.isDebugEnabled()) {
-            Set<T> conflicts = model.conflictValues(bestVal);
+            Set<T> conflicts = model.conflictValues(assignment, bestVal);
             double wconf = (iStat==null?0.0:iStat.countRemovals(solution.getIteration(), conflicts, bestVal));
-            sLog.debug("  [tabu] "+bestVal+" ("+(bestVal.variable().getAssignment()==null?"":"was="+bestVal.variable().getAssignment()+", ")+"val="+bestEval+(conflicts.isEmpty()?"":", conf="+(wconf+conflicts.size())+"/"+conflicts)+")");
+            T old = assignment.getValue(bestVal.variable());
+            sLog.debug("  [tabu] "+bestVal+" ("+(old==null?"":"was="+old+", ")+"val="+bestEval+(conflicts.isEmpty()?"":", conf="+(wconf+conflicts.size())+"/"+conflicts)+")");
         }
         
-        if (iTabu!=null) 
-            iTabu.add(tabuElement(bestVal));
+        if (tabu.size() > 0) 
+            tabu.add(tabuElement(bestVal));
 
         return new SimpleNeighbour<V,T>(bestVal.variable(), bestVal);        
     }
@@ -204,17 +209,19 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
         if (iFirstIteration<0)
             iFirstIteration = solution.getIteration();
         long idle = solution.getIteration()-Math.max(iFirstIteration,solution.getBestIteration()); 
+    	Assignment<V, T> assignment = solution.getAssignment();
+    	TabuList tabu = getContext(assignment);
         if (idle>iMaxIdleIterations) {
             sLog.debug("  [tabu]    max idle iterations reached");
             iFirstIteration=-1;
-            if (iTabu!=null) iTabu.clear();
+            if (tabu.size() > 0) tabu.clear();
             return null;
         }
-        if (iTabu!=null && iTabuMaxSize>iTabuMinSize) {
+        if (tabu.size() > 0 && iTabuMaxSize>iTabuMinSize) {
             if (idle==0) {
-                iTabu.resize(iTabuMinSize);
+                tabu.resize(iTabuMinSize);
             } else if (idle%(iMaxIdleIterations/(iTabuMaxSize-iTabuMinSize))==0) { 
-                iTabu.resize(Math.min(iTabuMaxSize,iTabu.size()+1));
+                tabu.resize(Math.min(iTabuMaxSize, tabu.size()+1));
             }
         }
 
@@ -222,22 +229,22 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
         double bestEval = 0.0;
         List<T> best = null;
 
-        T assigned = variable.getAssignment();
+        T assigned = assignment.getValue(variable);
         //double assignedVal = (assigned==null?-iConflictWeight:iValueWeight*assigned.toDouble());
-        double assignedVal = (assigned==null?iConflictWeight:iValueWeight*assigned.toDouble());
+        double assignedVal = (assigned==null?iConflictWeight:iValueWeight*assigned.toDouble(assignment));
         for (T value: variable.values()) {
             if (value.equals(assigned)) continue;
-            Set<T> conflicts = model.conflictValues(value);
-            double eval = iValueWeight*value.toDouble() - assignedVal;
+            Set<T> conflicts = model.conflictValues(assignment, value);
+            double eval = iValueWeight*value.toDouble(assignment) - assignedVal;
             for (T conflict: conflicts) {
-                eval -= iValueWeight*conflict.toDouble();
+                eval -= iValueWeight*conflict.toDouble(assignment);
                 eval += iConflictWeight * (1.0+(iStat==null?0.0:iStat.countRemovals(solution.getIteration(), conflict, value)));
             }
-            if (iTabu!=null && iTabu.contains(tabuElement(value))) {
+            if (tabu.size() > 0 && tabu.contains(tabuElement(value))) {
                 //if (model.getTotalValue()+eval>=solution.getBestValue()) continue;
-                int un = model.nrUnassignedVariables()-(assigned==null?0:1);
+                int un = assignment.nrUnassignedVariables(model)-(assigned==null?0:1);
                 if (un>model.getBestUnassignedVariables()) continue;
-                if (un==model.getBestUnassignedVariables() && model.getTotalValue()+eval>=solution.getBestValue()) continue;
+                if (un==model.getBestUnassignedVariables() && model.getTotalValue(assignment)+eval>=model.getBestValue()) continue;
 		    }
             if (best==null || bestEval>eval) {
                 if (best==null)
@@ -255,25 +262,26 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
         T bestVal = ToolBox.random(best);
         
         if (sLog.isDebugEnabled()) {
-            Set<T> conflicts = model.conflictValues(bestVal);
+            Set<T> conflicts = model.conflictValues(assignment, bestVal);
             double wconf = (iStat==null?0.0:iStat.countRemovals(solution.getIteration(), conflicts, bestVal));
-            sLog.debug("  [tabu] "+bestVal+" ("+(bestVal.variable().getAssignment()==null?"":"was="+bestVal.variable().getAssignment()+", ")+"val="+bestEval+(conflicts.isEmpty()?"":", conf="+(wconf+conflicts.size())+"/"+conflicts)+")");
+            T old = assignment.getValue(bestVal.variable());
+            sLog.debug("  [tabu] "+bestVal+" ("+(old==null?"":"was="+old+", ")+"val="+bestEval+(conflicts.isEmpty()?"":", conf="+(wconf+conflicts.size())+"/"+conflicts)+")");
         }
         
-        if (iTabu!=null) iTabu.add(tabuElement(bestVal));
+        if (tabu.size() > 0) tabu.add(tabuElement(bestVal));
         
         return bestVal;
     }
 
     
     /** Tabu-list */
-    private static class TabuList {
+    public class TabuList implements AssignmentContext {
         private Set<TabuItem> iList = new HashSet<TabuItem>();
         private int iSize;
         private long iIteration = 0;
         
-        public TabuList(int size) {
-            iSize = size;
+        public TabuList() {
+        	iSize = (iTabuMaxSize > 0 ? iTabuMinSize : 0);
         }
         
         public Object add(Object object) {
@@ -360,4 +368,9 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> impl
         /** Tabu element of a value */
         public Object tabuElement();
     }
+
+	@Override
+	public TabuList createAssignmentContext(Assignment<V, T> assignment) {
+		return new TabuList();
+	}
 }

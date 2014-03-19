@@ -9,11 +9,12 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 
-import net.sf.cpsolver.ifs.model.BinaryConstraint;
-import net.sf.cpsolver.ifs.model.Constraint;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.BinaryConstraint;
+import org.cpsolver.ifs.model.Constraint;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
 
@@ -142,7 +143,7 @@ public class ExExam extends Variable<ExExam, ExPlacement> implements Swapable<Ex
     
     private Set<ExExam> iCorrelatedExams = null;
     /** Number of corelated exams (considering students) */
-    public int nrCorelatedExams() {
+    public synchronized int nrCorelatedExams() {
         if (iCorrelatedExams!=null) return iCorrelatedExams.size();
         iCorrelatedExams = new HashSet<ExExam>();
         for (ExStudent student: getStudents())
@@ -185,7 +186,7 @@ public class ExExam extends Variable<ExExam, ExPlacement> implements Swapable<Ex
     }
     
     /** Find a non-conflicting placement (room) in the given period */
-    public ExPlacement findPlacement(ExPeriod period) {
+    public ExPlacement findPlacement(Assignment<ExExam, ExPlacement> assignment, ExPeriod period) {
         ExModel model = (ExModel)getModel();
         ExPlacement bestPlacement = null;
         int rx = ToolBox.random(model.getRooms().size());
@@ -193,51 +194,51 @@ public class ExExam extends Variable<ExExam, ExPlacement> implements Swapable<Ex
             ExRoom room = (ExRoom)model.getRooms().get((r+rx)%model.getRooms().size());
             if (room.getSize()<getStudents().size()) continue;
             ExPlacement placement = new ExPlacement(this, period, room);
-            if (room.inConflict(placement)) continue;
-            if (bestPlacement==null || bestPlacement.getRoomCost()>placement.getRoomCost())
+            if (room.inConflict(assignment, placement)) continue;
+            if (bestPlacement==null || bestPlacement.getRoomCost(assignment)>placement.getRoomCost(assignment))
                 bestPlacement = placement;
         }
         return bestPlacement;
     }
 
     /** Find a swap with another exam */
-    public Neighbour<ExExam, ExPlacement> findSwap(ExExam another) {
+    public Neighbour<ExExam, ExPlacement> findSwap(Assignment<ExExam, ExPlacement> assignment, ExExam another) {
         ExModel model = (ExModel)getModel();
         ExExam ex1 = this;
         ExExam ex2 = another;
-        ExPlacement p1 = ex1.getAssignment();
-        ExPlacement p2 = ex2.getAssignment();
+        ExPlacement p1 = assignment.getValue(ex1);
+        ExPlacement p2 = assignment.getValue(ex2);
         if (p1==null || p2==null) return null;
         if (ex1.getLength()>p2.getPeriod().getLength() || ex2.getLength()>p1.getPeriod().getLength()) return null;
         if (model.areDirectConflictsAllowed() && p1.getPeriodIndex()!=p2.getPeriodIndex()) {
-            ExPlacement np1 = ex1.findPlacement(p2.getPeriod());
+            ExPlacement np1 = ex1.findPlacement(assignment, p2.getPeriod());
             if (np1==null) return null;
-            ExPlacement np2 = ex2.findPlacement(p1.getPeriod());
+            ExPlacement np2 = ex2.findPlacement(assignment, p1.getPeriod());
             if (np2==null) return null;
             if (!model.areBinaryViolationsAllowed()) {
                 for (BinaryConstraint<ExExam, ExPlacement> constraint: ex1.binaryConstraints()) {
                     if (constraint.another(ex1).equals(ex2) && !constraint.isConsistent(np1, np2)) return null;
-                    if (constraint.inConflict(np1)) return null;
+                    if (constraint.inConflict(assignment, np1)) return null;
                 }
                 for (BinaryConstraint<ExExam, ExPlacement> constraint: ex2.binaryConstraints()) {
                     if (constraint.another(ex2).equals(ex1)) continue;
-                    if (constraint.inConflict(np2)) return null;
+                    if (constraint.inConflict(assignment, np2)) return null;
                 }
             }
-            return new ItcLazySwap<ExExam, ExPlacement>(np1, np2); 
+            return new ItcLazySwap<ExExam, ExPlacement>(assignment, np1, np2); 
         }
         ExRoom r1 = p1.getRoom();
         ExRoom r2 = p2.getRoom();
-        if (r2.getAvailableSpace(p2.getPeriod())+ex2.getStudents().size()<ex1.getStudents().size()) return null;
-        if (r1.getAvailableSpace(p1.getPeriod())+ex1.getStudents().size()<ex2.getStudents().size()) return null;
-        if (ex1.isRoomExclusive() && r2.getExams(p2.getPeriod()).size()>1) return null;
-        if (ex2.isRoomExclusive() && r1.getExams(p1.getPeriod()).size()>1) return null;
+        if (r2.getAvailableSpace(assignment, p2.getPeriod())+ex2.getStudents().size()<ex1.getStudents().size()) return null;
+        if (r1.getAvailableSpace(assignment, p1.getPeriod())+ex1.getStudents().size()<ex2.getStudents().size()) return null;
+        if (ex1.isRoomExclusive() && r2.getExams(assignment, p2.getPeriod()).size()>1) return null;
+        if (ex2.isRoomExclusive() && r1.getExams(assignment, p1.getPeriod()).size()>1) return null;
         if (!model.areDirectConflictsAllowed() && p1.getPeriodIndex()!=p2.getPeriodIndex()) {
             for (ExStudent s: ex1.getStudents()) {
-                if (s.hasExam(p2.getPeriod(),ex2)) return null;
+                if (s.hasExam(assignment, p2.getPeriod(),ex2)) return null;
             }
             for (ExStudent s: ex2.getStudents()) {
-                if (s.hasExam(p1.getPeriod(),ex1)) return null;
+                if (s.hasExam(assignment, p1.getPeriod(),ex1)) return null;
             }
         }
         ExPlacement np1 = new ExPlacement(ex1, p2.getPeriod(), p2.getRoom());
@@ -245,14 +246,14 @@ public class ExExam extends Variable<ExExam, ExPlacement> implements Swapable<Ex
         if (!model.areBinaryViolationsAllowed()) {
             for (BinaryConstraint<ExExam, ExPlacement> constraint: ex1.binaryConstraints()) {
                 if (constraint.another(ex1).equals(ex2) && !constraint.isConsistent(np1, np2)) return null;
-                if (constraint.inConflict(np1)) return null;
+                if (constraint.inConflict(assignment, np1)) return null;
             }
             for (BinaryConstraint<ExExam, ExPlacement> constraint: ex2.binaryConstraints()) {
                 if (constraint.another(ex2).equals(ex1)) continue;
-                if (constraint.inConflict(np2)) return null;
+                if (constraint.inConflict(assignment, np2)) return null;
             }
         }
-        return new ItcLazySwap<ExExam, ExPlacement>(np1, np2); 
+        return new ItcLazySwap<ExExam, ExPlacement>(assignment, np1, np2); 
     }
     
     /** Compare two exams for equality */
@@ -261,40 +262,5 @@ public class ExExam extends Variable<ExExam, ExPlacement> implements Swapable<Ex
         ExExam exam = (ExExam)o;
         return getId()==exam.getId();
     }
-    
-    /** A placement was assigned to this exam -- notify appropriate constraints. Default implementation
-     * is overridden to improve solver speed. */
-    public void assign(long iteration, ExPlacement placement) {
-        getModel().beforeAssigned(iteration, placement);
-        if (iValue!=null) unassign(iteration);
-        if (placement==null) return;
-        iValue = placement;
-        placement.getRoom().assigned(iteration, placement);
-        for (ExStudent student: getStudents())
-            student.assigned(iteration, placement);
-        if (!((ExModel)getModel()).areBinaryViolationsAllowed()) {
-            for (BinaryConstraint<ExExam, ExPlacement> bc: iBinaryConstraints)
-                bc.assigned(iteration, placement);
-        }
-        placement.assigned(iteration);
-        getModel().afterAssigned(iteration, placement);
-    }
-    
-    /** A placement was unassigned from this exam -- notify appropriate constraints. Default implementation
-     * is overridden to improve solver speed. */
-    public void unassign(long iteration) {
-        if (iValue==null) return;
-        getModel().beforeUnassigned(iteration,iValue);
-        ExPlacement placement = iValue;
-        iValue = null;
-        placement.getRoom().unassigned(iteration, placement);
-        for (ExStudent student: getStudents())
-            student.unassigned(iteration, placement);
-        if (!((ExModel)getModel()).areBinaryViolationsAllowed()) {
-            for (BinaryConstraint<ExExam, ExPlacement> bc: iBinaryConstraints)
-                bc.unassigned(iteration, placement);
-        }
-        getModel().afterUnassigned(iteration, placement);
-    }
-    
+
 }

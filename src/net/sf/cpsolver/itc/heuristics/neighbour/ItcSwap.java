@@ -1,8 +1,12 @@
 package net.sf.cpsolver.itc.heuristics.neighbour;
 
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
 
 /**
  * Swap two variables. Variables must implement {@link Swapable} interface.
@@ -27,7 +31,7 @@ import net.sf.cpsolver.ifs.model.Variable;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ItcSwap<V extends Variable<V, T>, T extends Value<V, T>> extends Neighbour<V, T> {
+public class ItcSwap<V extends Variable<V, T>, T extends Value<V, T>> implements Neighbour<V, T> {
     private T iV1, iV2;
     private double iValue;
     
@@ -44,7 +48,7 @@ public class ItcSwap<V extends Variable<V, T>, T extends Value<V, T>> extends Ne
     }
     
     /** Change of overall solution value */
-    public double value() {
+    public double value(Assignment<V, T> assignment) {
         return iValue;
     }
     
@@ -54,23 +58,17 @@ public class ItcSwap<V extends Variable<V, T>, T extends Value<V, T>> extends Ne
     public T secondValue() { return iV2; }
     
     /** Perform assignment */
-    public void assign(long iteration) {
-        if (iV1.variable().getAssignment()!=null) iV1.variable().unassign(iteration);
-        if (iV2.variable().getAssignment()!=null) iV2.variable().unassign(iteration);
-        iV1.variable().assign(iteration, iV1);
-        iV2.variable().assign(iteration, iV2);
+    public void assign(Assignment<V, T> assignment, long iteration) {
+    	assignment.unassign(iteration, iV1.variable());
+    	assignment.unassign(iteration, iV2.variable());
+    	assignment.assign(iteration, iV1);
+    	assignment.assign(iteration, iV2);
     }
     
     /** String representation */
     public String toString() {
         return 
-            "[swap] "+iV1.variable().getName()+" "+
-            (iV1.variable().getAssignment()==null?"null":iV1.variable().getAssignment().getName())+" -> "+
-            iV1.getName()+", "+
-            iV2.variable().getName()+" "+
-            (iV2.variable().getAssignment()==null?"null":iV2.variable().getAssignment().getName() )+" -> "+
-            iV2.getName()+
-            " ("+iValue+")";
+            "[swap] " + iV1.variable().getName() + " := " + iV1.getName() + ", " + iV2.variable().getName() + " := " + iV2.getName()+ " (" + iValue + ")";
     }
     
     /** Hash code */
@@ -92,6 +90,14 @@ public class ItcSwap<V extends Variable<V, T>, T extends Value<V, T>> extends Ne
         /**
          * Find a swap this variable with the given one (return null when no swap is found).
          */
-        public Neighbour<V,T> findSwap(V another);
+        public Neighbour<V,T> findSwap(Assignment<V, T> assignment, V another);
     }
+    
+	@Override
+	public Map<V, T> assignments() {
+		Map<V, T> ret = new HashMap<V, T>();
+		ret.put(iV1.variable(), iV1);
+		ret.put(iV2.variable(), iV2);
+		return ret;
+	}
 }

@@ -1,6 +1,7 @@
 package net.sf.cpsolver.itc.ctt.model;
 
-import net.sf.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
 
 /**
@@ -65,10 +66,10 @@ public class CttPlacement extends Value<CttLecture, CttPlacement> implements Tab
     /** String representation */
     public String toString() {
         CttLecture lecture = variable();
-        int compactPenalty = 0;
-        for (CttCurricula curricula: lecture.getCourse().getCurriculas())
-            compactPenalty += curricula.getCompactPenalty(this);
-        return lecture.getName()+" = "+getRoom().getId()+" "+getDay()+" "+getSlot()+" ["+getRoomCapPenalty()+"+"+getMinDaysPenalty()+"+"+compactPenalty+"+"+getRoomPenalty()+"]";
+        // int compactPenalty = 0;
+        // for (CttCurricula curricula: lecture.getCourse().getCurriculas())
+        //     compactPenalty += curricula.getCompactPenalty(this);
+        return lecture.getName()+" = "+getRoom().getId()+" "+getDay()+" "+getSlot();//+" ["+getRoomCapPenalty()+"+"+getMinDaysPenalty()+"+"+compactPenalty+"+"+getRoomPenalty()+"]";
     }
     
     /** Compute room capacity penalty for this placement:
@@ -84,13 +85,13 @@ public class CttPlacement extends Value<CttLecture, CttPlacement> implements Tab
      * All lectures of a course should be given in the same room. 
      * Each distinct room used for the lectures of a course, but the first, counts as 1 point of penalty.
      */
-    public int getRoomPenalty() {
+    public int getRoomPenalty(Assignment<CttLecture, CttPlacement> assignment) {
         CttLecture lecture = (CttLecture)variable();
         int same = 0;
         int different = 0;
         for (int i=0;i<lecture.getCourse().getNrLectures();i++) {
             if (i==lecture.getIdx()) continue;
-            CttPlacement p = (CttPlacement)lecture.getCourse().getLecture(i).getAssignment();
+            CttPlacement p = (CttPlacement)assignment.getValue(lecture.getCourse().getLecture(i));
             if (p==null) continue;
             if (p.getRoom().equals(getRoom())) same++; else different++;
         }
@@ -101,13 +102,13 @@ public class CttPlacement extends Value<CttLecture, CttPlacement> implements Tab
      * All lectures of a course should be given in the same room. 
      * Each distinct room used for the lectures of a course, but the first, counts as 1 point of penalty.
      */
-    public int getRoomPenalty(CttRoom room) {
+    public int getRoomPenalty(Assignment<CttLecture, CttPlacement> assignment, CttRoom room) {
         CttLecture lecture = (CttLecture)variable();
         int same = 0;
         int different = 0;
         for (int i=0;i<lecture.getCourse().getNrLectures();i++) {
             if (i==lecture.getIdx()) continue;
-            CttPlacement p = (CttPlacement)lecture.getCourse().getLecture(i).getAssignment();
+            CttPlacement p = (CttPlacement)assignment.getValue(lecture.getCourse().getLecture(i));
             if (p==null) continue;
             if (p.getRoom().equals(room)) same++; else different++;
         }
@@ -119,13 +120,13 @@ public class CttPlacement extends Value<CttLecture, CttPlacement> implements Tab
      * The lectures of each course must be spread into a minimum number of days. 
      * Each day below the minimum counts as 5 points of penalty.
      */
-    public int getMinDaysPenalty() {
+    public int getMinDaysPenalty(Assignment<CttLecture, CttPlacement> assignment) {
         CttLecture lecture = (CttLecture)variable();
         int days = 0;
         int nrSameDays = 0;
         boolean sameDay = false;
         for (int i=0;i<lecture.getCourse().getNrLectures();i++) {
-            CttPlacement p = (i==lecture.getIdx()?this:(CttPlacement)lecture.getCourse().getLecture(i).getAssignment());
+            CttPlacement p = (i==lecture.getIdx()?this:assignment.getValue(lecture.getCourse().getLecture(i)));
             if (p==null) continue;
             if (i!=lecture.getIdx() && p.getDay()==getDay()) sameDay=true;
             int day = 1 << p.getDay();
@@ -140,13 +141,13 @@ public class CttPlacement extends Value<CttLecture, CttPlacement> implements Tab
      * The lectures of each course must be spread into a minimum number of days. 
      * Each day below the minimum counts as 5 points of penalty.
      */
-    public int getMinDaysPenalty(int newDay) {
+    public int getMinDaysPenalty(Assignment<CttLecture, CttPlacement> assignment, int newDay) {
         CttLecture lecture = (CttLecture)variable();
         int days = 0;
         int nrSameDays = 0;
         boolean sameDay = false;
         for (int i=0;i<lecture.getCourse().getNrLectures();i++) {
-            CttPlacement p = (i==lecture.getIdx()?this:(CttPlacement)lecture.getCourse().getLecture(i).getAssignment());
+            CttPlacement p = (i==lecture.getIdx()?this:assignment.getValue(lecture.getCourse().getLecture(i)));
             if (p==null) continue;
             if (i!=lecture.getIdx() && p.getDay()==newDay) sameDay=true;
             int day = 1 << p.getDay();
@@ -162,23 +163,23 @@ public class CttPlacement extends Value<CttLecture, CttPlacement> implements Tab
      * For a given curriculum we account for a violation every time there is one lecture not adjacent to any 
      * other lecture within the same day. Each isolated lecture in a curriculum counts as 2 points of penalty.
      */
-    public int getCompactPenalty() {
+    public int getCompactPenalty(Assignment<CttLecture, CttPlacement> assignment) {
         int compactPenalty = 0;
         for (CttCurricula curricula: variable().getCourse().getCurriculas())
-            compactPenalty += curricula.getCompactPenalty(this);
+            compactPenalty += curricula.getCompactPenalty(assignment, this);
         return compactPenalty;
     }
 
     /**
      * Overall penalty for this placement
      */
-    public int toInt() {
-        return getRoomCapPenalty()+getRoomPenalty()+getMinDaysPenalty()+getCompactPenalty();
+    public int toInt(Assignment<CttLecture, CttPlacement> assignment) {
+        return getRoomCapPenalty() + getRoomPenalty(assignment) + getMinDaysPenalty(assignment) + getCompactPenalty(assignment);
     }
     
     /** Overall penalty for this placement */
-    public double toDouble() {
-        return toInt();
+    public double toDouble(Assignment<CttLecture, CttPlacement> assignment) {
+        return toInt(assignment);
     }
     
     /** Compare two placements for equality */

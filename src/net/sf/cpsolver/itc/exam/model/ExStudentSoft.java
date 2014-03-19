@@ -3,6 +3,8 @@ package net.sf.cpsolver.itc.exam.model;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.cpsolver.ifs.assignment.Assignment;
+
 /**
  * Representation of a student. Direct student conflicts are allowed
  * (Problem propery Exam.AllowDirectConflict is true).
@@ -28,8 +30,6 @@ import java.util.Set;
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class ExStudentSoft extends ExStudent {
-    private Set<ExExam>[] iExams = null;
-    private int[] iNrExams = null;
     
     /**
      * Constructor
@@ -40,30 +40,15 @@ public class ExStudentSoft extends ExStudent {
     }
     
     /**
-     * Initialization
+     * No conflicts
      */
-    @SuppressWarnings("unchecked")
-	public void init() {
-        super.init();
-        ExModel m = (ExModel)getModel();
-        iExams = new HashSet[m.getNrPeriods()];
-        iNrExams = new int[m.getNrPeriods()];
-        for (int i=0;i<m.getNrPeriods();i++) {
-            iExams[i]=new HashSet<ExExam>();
-            iNrExams[i]=0;
-        }
+    public void computeConflicts(Assignment<ExExam, ExPlacement> assignment, ExPlacement value, Set<ExPlacement> conflicts) {
     }
     
     /**
      * No conflicts
      */
-    public void computeConflicts(ExPlacement value, Set<ExPlacement> conflicts) {
-    }
-    
-    /**
-     * No conflicts
-     */
-    public boolean inConflict(ExPlacement value) {
+    public boolean inConflict(Assignment<ExExam, ExPlacement> assignment, ExPlacement value) {
         return false;
     }
     
@@ -77,46 +62,99 @@ public class ExStudentSoft extends ExStudent {
     /**
      * Update assignment table
      */
-    public void afterAssigned(long iteration, ExPlacement p) {
-        if (iExams[p.getPeriodIndex()].add(p.variable()))
-            iNrExams[p.getPeriodIndex()]++;
+    public void afterAssigned(Assignment<ExExam, ExPlacement> assignment, long iteration, ExPlacement p) {
+    	getContext(assignment).assigned(assignment, p);
     }
         
     /**
      * Update assignment table
      */
-    public void afterUnassigned(long iteration, ExPlacement p) {
-        if (iExams[p.getPeriodIndex()].remove(p.variable()))
-            iNrExams[p.getPeriodIndex()]--;
+    public void afterUnassigned(Assignment<ExExam, ExPlacement> assignment, long iteration, ExPlacement p) {
+    	getContext(assignment).unassigned(assignment, p);
     }
     
     /** List of exams that this student has at the given period */
-    public Set<ExExam> getExams(int period) {
-        return iExams[period];
+    public Set<ExExam> getExams(Assignment<ExExam, ExPlacement> assignment, int period) {
+        return getContext(assignment).getExams(period);
     }
     /** True, if this student has one or more exams at the given period */
-    public boolean hasExam(int period) {
-        return iNrExams[period]>0;
+    public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period) {
+        return getContext(assignment).nrExams(period) > 0;
     }
     /** Number of exams that this student has at the given period */
-    public int nrExams(int period) {
-        return iNrExams[period];
+    public int nrExams(Assignment<ExExam, ExPlacement> assignment, int period) {
+        return getContext(assignment).nrExams(period);
     }
     /** True, if this student has one or more exams at the given period (given exam excluded)*/
-    public boolean hasExam(int period, ExExam exclude) {
-        if (exclude==null) return hasExam(period);
-        return (iExams[period].size()>(iExams[period].contains(exclude)?1:0));
+    public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude) {
+        if (exclude == null) return hasExam(assignment, period);
+        ExStudent.Context context = getContext(assignment);
+        return (context.nrExams(period) > (context.getExams(period).contains(exclude) ? 1 : 0));
     }
     /** Number of exams that this student has at the given period (given exam excluded)*/
-    public int nrExams(int period, ExExam exclude) {
-        if (exclude==null) return nrExams(period);
-        return iExams[period].size()-(iExams[period].contains(exclude)?1:0);
+    public int nrExams(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude) {
+        if (exclude == null) return nrExams(assignment, period);
+        ExStudent.Context context = getContext(assignment);
+        return context.nrExams(period) - (context.getExams(period).contains(exclude) ? 1 : 0);
     }
     
     public void assigned(long iteration, ExPlacement value) {
     }
         
     public void unassigned(long iteration, ExPlacement value) {
-    }    
+    }
     
+    public class Context implements ExStudent.Context {
+        private Set<ExExam>[] iExams = null;
+        private int[] iNrExams = null;
+
+    	@SuppressWarnings("unchecked")
+		private Context(ExModel m, Assignment<ExExam, ExPlacement> assignment) {
+            iExams = new HashSet[m.getNrPeriods()];
+            iNrExams = new int[m.getNrPeriods()];
+            for (int i=0;i<m.getNrPeriods();i++) {
+                iExams[i]=new HashSet<ExExam>();
+                iNrExams[i]=0;
+            }
+            if (assignment.nrAssignedVariables() > 0)
+                for (ExExam exam: variables()) {
+                	ExPlacement p = assignment.getValue(exam);
+                	if (p != null)
+                		assigned(assignment, p);
+                }
+    	}
+
+		@Override
+		public void assigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement p) {
+	        if (iExams[p.getPeriodIndex()].add(p.variable()))
+	            iNrExams[p.getPeriodIndex()]++;
+		}
+
+		@Override
+		public void unassigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement p) {
+	        if (iExams[p.getPeriodIndex()].remove(p.variable()))
+	            iNrExams[p.getPeriodIndex()]--;
+		}
+		
+		@Override
+		public Set<ExExam> getExams(int period) {
+			return iExams[period];
+		}
+		
+		@Override
+		public int nrExams(int period) {
+			return iNrExams[period];
+		}
+
+		@Override
+		public ExPlacement getPlacement(int period) {
+			return null;
+		}
+    }
+
+	@Override
+	public Context createAssignmentContext(Assignment<ExExam, ExPlacement> assignment) {
+		return new Context((ExModel)getModel(), assignment);
+	}
+
 }

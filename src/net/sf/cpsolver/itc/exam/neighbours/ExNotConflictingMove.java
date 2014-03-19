@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.exam.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.exam.model.ExExam;
 import net.sf.cpsolver.itc.exam.model.ExModel;
 import net.sf.cpsolver.itc.exam.model.ExPeriod;
@@ -45,17 +46,18 @@ public class ExNotConflictingMove implements NeighbourSelection<ExExam, ExPlacem
     /** Neighbour selection */
     public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
+        Assignment<ExExam, ExPlacement> assignment = solution.getAssignment();
         ExExam exam = (ExExam)ToolBox.random(model.variables());
         int px = ToolBox.random(model.getNrPeriods());
         for (int t=0;t<model.getNrPeriods();t++) {
             ExPeriod period = model.getPeriod((t + px) % model.getNrPeriods());
             if (exam.getLength()>period.getLength()) continue;
-            ExPlacement p = exam.findPlacement(period);
+            ExPlacement p = exam.findPlacement(assignment, period);
             if (p==null) continue;
             if (!model.areBinaryViolationsAllowed() || !model.areDirectConflictsAllowed()) {
-                if (model.inConflict(p)) continue;
+                if (model.inConflict(assignment, p)) continue;
             }
-            return new ItcSimpleNeighbour<ExExam, ExPlacement>(exam, p);
+            return new ItcSimpleNeighbour<ExExam, ExPlacement>(assignment, exam, p);
         }
         return null;
     }

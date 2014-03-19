@@ -3,8 +3,9 @@ package net.sf.cpsolver.itc.ctt.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
 
@@ -119,29 +120,29 @@ public class CttLecture extends Variable<CttLecture, CttPlacement> implements Sw
     }
     
     /** Find a swap with a placement of another lecture */
-    public Neighbour<CttLecture, CttPlacement> findSwap(CttLecture another) {
+    public Neighbour<CttLecture, CttPlacement> findSwap(Assignment<CttLecture, CttPlacement> assignment, CttLecture another) {
         CttLecture lecture = (CttLecture)another;
         if (getCourse().equals(lecture.getCourse())) return null;
-        CttPlacement p1 = (CttPlacement)getAssignment();
-        CttPlacement p2 = (CttPlacement)lecture.getAssignment();
+        CttPlacement p1 = (CttPlacement)assignment.getValue(this);
+        CttPlacement p2 = (CttPlacement)assignment.getValue(lecture);
         if (p1==null || p2==null) return null;
         if (!getCourse().isAvailable(p2.getDay(),p2.getSlot())) return null;
         if (!lecture.getCourse().isAvailable(p1.getDay(), p1.getSlot())) return null;
         if (!getCourse().getTeacher().equals(lecture.getCourse().getTeacher())) {
-            if (getCourse().getTeacher().getConstraint().getPlacement(p2.getDay(), p2.getSlot())!=null) return null;
-            if (lecture.getCourse().getTeacher().getConstraint().getPlacement(p1.getDay(), p1.getSlot())!=null) return null;
+            if (getCourse().getTeacher().getConstraint().getPlacement(assignment, p2.getDay(), p2.getSlot())!=null) return null;
+            if (lecture.getCourse().getTeacher().getConstraint().getPlacement(assignment, p1.getDay(), p1.getSlot())!=null) return null;
         }
         for (CttCurricula c: getCourse().getCurriculas()) {
-            CttPlacement conflict = c.getConstraint().getPlacement(p2.getDay(), p2.getSlot());
+            CttPlacement conflict = c.getConstraint().getPlacement(assignment, p2.getDay(), p2.getSlot());
             if (conflict!=null && !conflict.variable().equals(lecture)) return null;
         }
         for (CttCurricula c: lecture.getCourse().getCurriculas()) {
-            CttPlacement conflict = c.getConstraint().getPlacement(p1.getDay(), p1.getSlot());
+            CttPlacement conflict = c.getConstraint().getPlacement(assignment, p1.getDay(), p1.getSlot());
             if (conflict!=null && !conflict.variable().equals(this)) return null;
         }
         CttPlacement np1 = new CttPlacement(this, p2.getRoom(), p2.getDay(), p2.getSlot());
         CttPlacement np2 = new CttPlacement(lecture, p1.getRoom(), p1.getDay(), p1.getSlot());
-        return new ItcLazySwap<CttLecture, CttPlacement>(np1, np2);
+        return new ItcLazySwap<CttLecture, CttPlacement>(assignment, np1, np2);
         /*
         double value = 0;
         //value += np1.extraPenalty() + np2.extraPenalty() - p1.extraPenalty() - p2.extraPenalty();
@@ -170,31 +171,26 @@ public class CttLecture extends Variable<CttLecture, CttPlacement> implements Sw
     
     /** A placement was assigned to this lecture -- notify appropriate constraints. Default implementation
      * is overridden to improve solver speed. */
-    public void assign(long iteration, CttPlacement value) {
-        getModel().beforeAssigned(iteration,value);
-        if (iValue!=null) unassign(iteration);
-        if (value==null) return;
-        iValue = value;
-        value.getRoom().getConstraint().assigned(iteration, value);
+    /*
+    @Override
+    public void variableAssigned(Assignment<CttLecture, CttPlacement> assignment, long iteration, CttPlacement value) {
+        value.getRoom().getConstraint().assigned(assignment, iteration, value);
         for (CttCurricula curricula: getCourse().getCurriculas())
-            curricula.getConstraint().assigned(iteration, value);
-        getCourse().getTeacher().getConstraint().assigned(iteration, value);
-        value.assigned(iteration);
-        getModel().afterAssigned(iteration,value);
+            curricula.getConstraint().assigned(assignment, iteration, value);
+        getCourse().getTeacher().getConstraint().assigned(assignment, iteration, value);
     }
+	*/
     
     /** A placement was unassigned from this lecture -- notify appropriate constraints. Default implementation
      * is overridden to improve solver speed. */
-    public void unassign(long iteration) {
-        if (iValue==null) return;
-        getModel().beforeUnassigned(iteration,iValue);
-        CttPlacement oldValue = iValue;
-        iValue = null;
-        oldValue.getRoom().getConstraint().unassigned(iteration, oldValue);
+	/*
+    @Override
+    public void variableUnassigned(Assignment<CttLecture, CttPlacement> assignment, long iteration, CttPlacement value) {
+    	value.getRoom().getConstraint().unassigned(assignment, iteration, value);
         for (CttCurricula curricula: getCourse().getCurriculas())
-            curricula.getConstraint().unassigned(iteration, oldValue);
-        getCourse().getTeacher().getConstraint().unassigned(iteration, oldValue);
-        getModel().afterUnassigned(iteration,oldValue);
+            curricula.getConstraint().unassigned(assignment, iteration, value);
+        getCourse().getTeacher().getConstraint().unassigned(assignment, iteration, value);
     }
+    */
     
 }

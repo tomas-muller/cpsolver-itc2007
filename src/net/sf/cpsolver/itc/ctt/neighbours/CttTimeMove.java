@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.ctt.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.ctt.model.CttCurricula;
 import net.sf.cpsolver.itc.ctt.model.CttLecture;
 import net.sf.cpsolver.itc.ctt.model.CttModel;
@@ -56,10 +57,12 @@ public class CttTimeMove implements NeighbourSelection<CttLecture, CttPlacement>
     /** Neighbour selection */
     public Neighbour<CttLecture, CttPlacement> selectNeighbour(Solution<CttLecture, CttPlacement> solution) {
         CttModel model = (CttModel)solution.getModel();
-        CttLecture lecture = (CttLecture)ToolBox.random(model.variables());
-        CttRoom room = (lecture.getAssignment()==null?
-                (CttRoom)ToolBox.random(model.getRooms()):
-                ((CttPlacement)lecture.getAssignment()).getRoom());
+        Assignment<CttLecture, CttPlacement> assignment = solution.getAssignment();
+        CttLecture lecture = ToolBox.random(model.variables());
+        CttPlacement placement = assignment.getValue(lecture);
+        CttRoom room = (placement == null ?
+                ToolBox.random(model.getRooms()):
+                placement.getRoom());
         int dx = ToolBox.random(model.getNrDays());
         int sx = ToolBox.random(model.getNrSlotsPerDay());
         for (int d=0;d<model.getNrDays();d++)
@@ -67,13 +70,13 @@ public class CttTimeMove implements NeighbourSelection<CttLecture, CttPlacement>
                 int day = (d + dx) % model.getNrDays();
                 int slot = (s + sx) % model.getNrSlotsPerDay();
                 if (!lecture.getCourse().isAvailable(day,slot)) continue;
-                if (lecture.getCourse().getTeacher().getConstraint().getPlacement(day,slot)!=null) continue;
-                if (room.getConstraint().getPlacement(day, slot)!=null) continue;
+                if (lecture.getCourse().getTeacher().getConstraint().getPlacement(assignment, day,slot)!=null) continue;
+                if (room.getConstraint().getPlacement(assignment, day, slot)!=null) continue;
                 for (CttCurricula curricula: lecture.getCourse().getCurriculas()) {
-                    if (curricula.getConstraint().getPlacement(day,slot)!=null) continue slot;
+                    if (curricula.getConstraint().getPlacement(assignment, day,slot)!=null) continue slot;
                 }
-                Neighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, new CttPlacement(lecture, room, day, slot));
-                if (!iHC || n.value()<=0) return n;
+                Neighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(assignment, lecture, new CttPlacement(lecture, room, day, slot));
+                if (!iHC || n.value(assignment)<=0) return n;
             }
         return null;
     }

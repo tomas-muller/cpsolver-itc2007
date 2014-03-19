@@ -12,6 +12,8 @@ import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
 
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -47,17 +49,9 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
     private List<CttCurricula> iCurriculas = new ArrayList<CttCurricula>();
     private List<CttTeacher> iTeachers = new ArrayList<CttTeacher>();
     
-    private int iCompactPenalty = 0;
-    private int iRoomPenalty = 0;
-    private int iMinDaysPenalty = 0;
-    private int iRoomCapPenalty = 0;
-
     /** Constructor */
     public CttModel() {
         super();
-        iAssignedVariables = null;
-        iUnassignedVariables = null;
-        iPerturbVariables = null;
     }
     
     /** Return instance name */
@@ -131,16 +125,20 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
         return teacher;
     }
     
+    public Penalties getPenalties(Assignment<CttLecture, CttPlacement> assignment) {
+    	return (Penalties) getContext(assignment);
+    }
+    
     /** 
      * Curriculum compactness penalty:
      * Lectures belonging to a curriculum should be adjacent to each other (i.e., in consecutive periods). For a given curriculum we account for a violation every time there is one lecture not adjacent to any other lecture within the same day. Each isolated lecture in a curriculum counts as 2 points of penalty.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getCompactPenalty(boolean precise) {
-        if (!precise) return iCompactPenalty;
+    public int getCompactPenalty(Assignment<CttLecture, CttPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getCompactPenalty();
         int penalty = 0;
         for (CttCurricula curricula: iCurriculas)
-            penalty += curricula.getCompactPenalty();
+            penalty += curricula.getCompactPenalty(assignment);
         return penalty;
     }
     
@@ -150,11 +148,11 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
      * All lectures of a course should be given in the same room. Each distinct room used for the lectures of a course, but the first, counts as 1 point of penalty.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getRoomPenalty(boolean precise) {
-        if (!precise) return iRoomPenalty;
+    public int getRoomPenalty(Assignment<CttLecture, CttPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getRoomPenalty();
         int penalty = 0;
         for (CttCourse course: iCourses)
-            penalty += course.getRoomPenalty();
+            penalty += course.getRoomPenalty(assignment);
         return penalty;
     }
     
@@ -163,11 +161,11 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
      * The lectures of each course must be spread into a minimum number of days. Each day below the minimum counts as 5 points of penalty.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getMinDaysPenalty(boolean precise) {
-        if (!precise) return iMinDaysPenalty;
+    public int getMinDaysPenalty(Assignment<CttLecture, CttPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getMinDaysPenalty();
         int penalty = 0;
         for (CttCourse course: iCourses)
-            penalty += course.getMinDaysPenalty();
+            penalty += course.getMinDaysPenalty(assignment);
         return penalty;
     }
 
@@ -176,55 +174,57 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
      * For each lecture, the number of students that attend the course must be less or equal than the number of seats of all the rooms that host its lectures. Each student above the capacity counts as 1 point of penalty.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getRoomCapPenalty(boolean precise) {
-        if (!precise) return iRoomCapPenalty;
+    public int getRoomCapPenalty(Assignment<CttLecture, CttPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getRoomCapPenalty();
         int penalty = 0;
-        for (CttLecture lecture: variables())
-            if (lecture.getAssignment()!=null)
-                penalty += ((CttPlacement)lecture.getAssignment()).getRoomCapPenalty();
+        for (CttLecture lecture: variables()) {
+        	CttPlacement placement = assignment.getValue(lecture);
+            if (placement != null)
+                penalty += placement.getRoomCapPenalty();
+        }
         return penalty;
     }
     
     /**
      * Overall solution value
      */
-    public double getTotalValue() {
-        return getTotalValue(false);
+    public double getTotalValue(Assignment<CttLecture, CttPlacement> assignment) {
+        return getTotalValue(assignment, false);
     }
         
     /**
      * Overall solution value
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public double getTotalValue(boolean precise) {
+    public double getTotalValue(Assignment<CttLecture, CttPlacement> assignment, boolean precise) {
         return 
-            getCompactPenalty(precise)+
-            getRoomCapPenalty(precise)+
-            getMinDaysPenalty(precise)+
-            getRoomPenalty(precise);
+            getCompactPenalty(assignment, precise)+
+            getRoomCapPenalty(assignment, precise)+
+            getMinDaysPenalty(assignment, precise)+
+            getRoomPenalty(assignment, precise);
     }
     
     /**
      * Solution info, added values of given criteria, that is, room capacity penalty, minimum working days penalty, curriculum compactness penalty, and room stability penalty.
      */
-    public Map<String, String> getInfo() {
-    	Map<String, String> info = super.getInfo();
-        info.put("RoomCapacity",String.valueOf(getRoomCapPenalty(false)));
-        info.put("MinimumWorkingDays",String.valueOf(getMinDaysPenalty(false)));
-        info.put("CurriculumCompactness",String.valueOf(getCompactPenalty(false)));
-        info.put("RoomStability",String.valueOf(getRoomPenalty(false)));
+    public Map<String, String> getInfo(Assignment<CttLecture, CttPlacement> assignment) {
+    	Map<String, String> info = super.getInfo(assignment);
+        info.put("RoomCapacity",String.valueOf(getRoomCapPenalty(assignment, false)));
+        info.put("MinimumWorkingDays",String.valueOf(getMinDaysPenalty(assignment, false)));
+        info.put("CurriculumCompactness",String.valueOf(getCompactPenalty(assignment, false)));
+        info.put("RoomStability",String.valueOf(getRoomPenalty(assignment, false)));
         return info;
     }
     
     /**
      * Extended solution info, added precise computation of values of given criteria, that is, room capacity penalty, minimum working days penalty, curriculum compactness penalty, and room stability penalty.
      */
-    public Map<String, String> getExtendedInfo() {
-    	Map<String, String> info = super.getExtendedInfo();
-        info.put("RoomCapacity [p]",String.valueOf(getRoomCapPenalty(true)));
-        info.put("MinimumWorkingDays [p]",String.valueOf(getMinDaysPenalty(true)));
-        info.put("CurriculumCompactness [p]",String.valueOf(getCompactPenalty(true)));
-        info.put("RoomStability [p]",String.valueOf(getRoomPenalty(true)));
+    public Map<String, String> getExtendedInfo(Assignment<CttLecture, CttPlacement> assignment) {
+    	Map<String, String> info = super.getExtendedInfo(assignment);
+        info.put("RoomCapacity [p]",String.valueOf(getRoomCapPenalty(assignment, true)));
+        info.put("MinimumWorkingDays [p]",String.valueOf(getMinDaysPenalty(assignment, true)));
+        info.put("CurriculumCompactness [p]",String.valueOf(getCompactPenalty(assignment, true)));
+        info.put("RoomStability [p]",String.valueOf(getRoomPenalty(assignment, true)));
         return info;
     }    
     
@@ -304,12 +304,12 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
     /**
      * Save solution into a file, see <a href='http://www.cs.qub.ac.uk/itc2007/curriculmcourse/course_curriculm_index_files/outputformat.htm'>output format</a> description.
      */
-    public boolean save(File file) throws Exception {
+    public boolean save(Assignment<CttLecture, CttPlacement> assignment, File file) throws Exception {
         PrintWriter w = new PrintWriter(new FileWriter(file));
         for (CttCourse course: getCourses()) {
             for (int i=0;i<course.getNrLectures();i++) {
                 CttLecture lecture = course.getLecture(i);
-                CttPlacement placement = (CttPlacement)lecture.getAssignment();
+                CttPlacement placement = assignment.getValue(lecture);
                 if (placement==null)
                     w.println(course.getId());
                 else
@@ -332,37 +332,85 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
     /**
      * CSV line, values of this solution, i.e. , room capacity penalty, minimum working days penalty, curriculum compactness penalty, and room stability penalty.
      */
-    public String csvLine() { 
+    public String csvLine(Assignment<CttLecture, CttPlacement> assignment) { 
         return 
-            getRoomCapPenalty(false)+","+
-            getMinDaysPenalty(false)+","+
-            getCompactPenalty(false)+","+
-            getRoomPenalty(false);
+            getRoomCapPenalty(assignment, false) + "," +
+            getMinDaysPenalty(assignment, false) + "," +
+            getCompactPenalty(assignment, false) + "," +
+            getRoomPenalty(assignment, false);
     }
-    
+
+	@Override
+	public AssignmentConstraintContext<CttLecture, CttPlacement> createAssignmentContext(Assignment<CttLecture, CttPlacement> assignment) {
+		return new Penalties(assignment);
+	}
+	
     /**
      * Update penalty counters when a variable is unassigned 
      */
-    public void afterUnassigned(long iteration, CttPlacement placement) {
-        super.afterUnassigned(iteration, placement);
-        CttLecture lecture = placement.variable();
-        iRoomPenalty -= placement.getRoomPenalty();
-        iRoomCapPenalty -= placement.getRoomCapPenalty();
-        iMinDaysPenalty -= placement.getMinDaysPenalty();
-        for (CttCurricula curricula: lecture.getCourse().getCurriculas())
-            iCompactPenalty -= curricula.getCompactPenalty(placement);
+    public void afterUnassigned(Assignment<CttLecture, CttPlacement> assignment, long iteration, CttPlacement placement) {
+        super.afterUnassigned(assignment, iteration, placement);
+        getPenalties(assignment).afterUnassigned(assignment, placement);
     }
     
     /**
      * Update penalty counters when a variable is assigned 
      */
-    public void beforeAssigned(long iteration, CttPlacement placement) {
-        super.beforeAssigned(iteration, placement);
-        CttLecture lecture = placement.variable();
-        iMinDaysPenalty += placement.getMinDaysPenalty();
-        iRoomPenalty += placement.getRoomPenalty();
-        iRoomCapPenalty += placement.getRoomCapPenalty();
-        for (CttCurricula curricula: lecture.getCourse().getCurriculas())
-            iCompactPenalty += curricula.getCompactPenalty(placement);
+    public void beforeAssigned(Assignment<CttLecture, CttPlacement> assignment, long iteration, CttPlacement placement) {
+        super.beforeAssigned(assignment, iteration, placement);
+        getPenalties(assignment).beforeAssigned(assignment, placement);
     }
+
+    
+    private class Penalties implements AssignmentConstraintContext<CttLecture, CttPlacement> {
+        private int iCompactPenalty = 0;
+        private int iRoomPenalty = 0;
+        private int iMinDaysPenalty = 0;
+        private int iRoomCapPenalty = 0;
+        
+		public Penalties(Assignment<CttLecture, CttPlacement> assignment) {
+			iCompactPenalty = CttModel.this.getCompactPenalty(assignment, true);
+			iRoomPenalty = CttModel.this.getRoomPenalty(assignment, true);
+			iMinDaysPenalty = CttModel.this.getMinDaysPenalty(assignment, true);
+			iRoomCapPenalty = CttModel.this.getRoomCapPenalty(assignment, true);
+		}
+		
+		@Override
+		public void assigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement placement) {}
+		
+		public void beforeAssigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement placement) {
+	        CttLecture lecture = placement.variable();
+	        iMinDaysPenalty += placement.getMinDaysPenalty(assignment);
+	        iRoomPenalty += placement.getRoomPenalty(assignment);
+	        iRoomCapPenalty += placement.getRoomCapPenalty();
+	        for (CttCurricula curricula: lecture.getCourse().getCurriculas())
+	            iCompactPenalty += curricula.getCompactPenalty(assignment, placement);
+		}
+		
+		@Override
+		public void unassigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement placement) {}
+		
+		public void afterUnassigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement placement) {
+	        CttLecture lecture = placement.variable();
+	        iRoomPenalty -= placement.getRoomPenalty(assignment);
+	        iRoomCapPenalty -= placement.getRoomCapPenalty();
+	        iMinDaysPenalty -= placement.getMinDaysPenalty(assignment);
+	        for (CttCurricula curricula: lecture.getCourse().getCurriculas())
+	        	iCompactPenalty -= curricula.getCompactPenalty(assignment, placement);
+		}
+		
+		public int getCompactPenalty() { return iCompactPenalty; }
+		
+		public int getRoomPenalty() { return iRoomPenalty; }
+		
+		public int getMinDaysPenalty() { return iMinDaysPenalty; }
+		
+		public int getRoomCapPenalty() { return iRoomCapPenalty; }
+    }
+
+
+	@Override
+	public Assignment<CttLecture, CttPlacement> createAssignment(int index, Assignment<CttLecture, CttPlacement> assignment) {
+		return new CttAssignment(this, index, assignment);
+	}
 }

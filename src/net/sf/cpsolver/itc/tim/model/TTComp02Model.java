@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -48,15 +51,11 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
     protected List<TimRoom> iRooms = null;
     /** Student constraints */
     protected List<TimStudent> iStudents = null;
-    /** Internal counter of objectives */
-    private int iScore[] = new int[] {0,0,0};
     
     /** Constructor */
     public TTComp02Model() {
         super();
-        iAssignedVariables = null;
-        iUnassignedVariables = null;
-        iPerturbVariables = null;
+        iContextUpdateType = ContextUpdateType.AfterUnassignedBeforeAssigned;
     }
     
     /**
@@ -137,7 +136,7 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
             addConstraint(room);
         
         for (TimEvent event: variables())
-            event.init(isAllowProhibitedTime(),isAllowNoRoom());
+            event.init(getEmptyAssignment(), isAllowProhibitedTime(),isAllowNoRoom());
         
         in.close();
         
@@ -159,11 +158,11 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
      * as well as track 2 of ITC2007 (see <a href='http://www.cs.qub.ac.uk/itc2007/postenrolcourse/course_post_index_files/outputformat.htm'>
      * Output Format</a>).
      */ 
-    public boolean save(File file) throws IOException {
+    public boolean save(Assignment<TimEvent, TimLocation> assignment, File file) throws IOException {
         PrintWriter out = new PrintWriter(new FileWriter(file));
         
         for (TimEvent event: variables()) {
-            TimLocation location = event.getAssignment();
+            TimLocation location = assignment.getValue(event);
             out.println(location==null?"-1 -1":location.time()+" "+(location.room()==null?-1:location.room().getId()));
         }
         
@@ -178,50 +177,36 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
      * @param lastTime include last slot of the day criteria
      * @param threeMore include more than two events consecutively criteria
      */
-    public int score(boolean oneDay, boolean lastTime, boolean threeMore) {
+    public int score(Assignment<TimEvent, TimLocation> assignment, boolean oneDay, boolean lastTime, boolean threeMore) {
         int score = 0;
         for (TimStudent student: iStudents)
-            score += student.score(oneDay, lastTime, threeMore);
+            score += student.score(assignment, oneDay, lastTime, threeMore);
         return score;
     }
     
     /**
      * Solution value
      */
-    public double getTotalValue() {
-        return iScore[0]+iScore[1]+iScore[2];
+    public double getTotalValue(Assignment<TimEvent, TimLocation> assignment) {
+        return ((TTComp02Context)getContext(assignment)).getTotalValue();
     }
     
-    /** Value of single event on a day criterion */
-    public int oneTimePenalty() {
-        return iScore[0];
-    }
-
-    /** Value of last slot of the day criterion */
-    public int lastTimePenalty() {
-        return iScore[1];
-    }
-
-    /** Value of more than two events consecutively criterion */
-    public int treeOrMoreTimesPenalty() {
-        return iScore[2];
-    }
-
     /** Solution info -- add values of solutions criteria */
-    public Map<String, String> getInfo() {
-    	Map<String, String> info = super.getInfo();
-        info.put("One time", String.valueOf(iScore[0]));
-        info.put("Last time", String.valueOf(iScore[1]));
-        info.put("Three or more times", String.valueOf(iScore[2]));
+    public Map<String, String> getInfo(Assignment<TimEvent, TimLocation> assignment) {
+    	Map<String, String> info = super.getInfo(assignment);
+    	TTComp02Context context = (TTComp02Context)getContext(assignment);
+        info.put("One time", String.valueOf(context.oneTimePenalty()));
+        info.put("Last time", String.valueOf(context.lastTimePenalty()));
+        info.put("Three or more times", String.valueOf(context.threeOrMoreTimesPenalty()));
         return info;
     }
     
     /** Solution info -- add values of solutions criteria (precise computation) */
-    public Map<String, String> getExtendedInfo() {
-    	Map<String, String> info = super.getExtendedInfo();
-        info.put("One time [p]", String.valueOf(score(true,false,false)));
-        info.put("Last time [p]", String.valueOf(score(false,true,false)));
-        info.put("Three or more times [p]", String.valueOf(score(false,false,true)));
+    public Map<String, String> getExtendedInfo(Assignment<TimEvent, TimLocation> assignment) {
+    	Map<String, String> info = super.getExtendedInfo(assignment);
+        info.put("One time [p]", String.valueOf(score(assignment, true, false, false)));
+        info.put("Last time [p]", String.valueOf(score(assignment, false, true, false)));
+        info.put("Three or more times [p]", String.valueOf(score(assignment, false, false, true)));
         return info;
     }
     
@@ -239,38 +224,12 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
      * use of last time of a day,
      * more three or more events consecutively
      */
-    public String csvLine() { 
-        return 
-            iScore[0]+","+
-            iScore[1]+","+
-            iScore[2];
-    }
-    
-    
-    /**
-     * Update counters on unassignment of an event
-     */
-    public void afterUnassigned(long iteration, TimLocation location) {
-        super.afterUnassigned(iteration, location);
-        int[] score = location.score();
-        iScore[0] -= score[0];
-        iScore[1] -= score[1];
-        iScore[2] -= score[2];
-    }
-    
-    /**
-     * Update counters on assignment of an event
-     */
-    public void beforeAssigned(long iteration, TimLocation location) {
-        super.beforeAssigned(iteration, location);
-        int[] score = location.score();
-        iScore[0] += score[0];
-        iScore[1] += score[1];
-        iScore[2] += score[2];
+    public String csvLine(Assignment<TimEvent, TimLocation> assignment) { 
+        return ((TTComp02Context)getContext(assignment)).csvLine();
     }
     
     /** Load solution from given file */
-    public boolean loadSolution(File file) throws IOException {
+    public boolean loadSolution(File file, Assignment<TimEvent, TimLocation> assignment) throws IOException {
         BufferedReader in = new BufferedReader(new FileReader(file));
         
         for (TimEvent event: variables()) {
@@ -281,11 +240,90 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
             TimRoom room = null;
             for (TimRoom r: rooms())
                 if (r.getId()==roomId) { room = r; break; }
-            event.assign(0, new TimLocation(event, time, room));
+            assignment.assign(0, new TimLocation(event, time, room));
         }
         
         in.close();
         
         return true;
     }
+    
+    public class TTComp02Context implements AssignmentConstraintContext<TimEvent, TimLocation> {
+        /** Internal counter of objectives */
+        private int iScore[] = new int[] {0,0,0};
+
+    	public TTComp02Context(Assignment<TimEvent, TimLocation> assignment) {
+    		for (TimEvent event: variables()) {
+    			TimLocation location = assignment.getValue(event);
+    			if (location != null)
+    				assigned(assignment, location);
+    		}
+    	}
+
+        /**
+         * Update counters on assignment of an event
+         */
+		@Override
+		public void assigned(Assignment<TimEvent, TimLocation> assignment, TimLocation location) {
+	        int[] score = location.score(assignment);
+	        iScore[0] += score[0];
+	        iScore[1] += score[1];
+	        iScore[2] += score[2];
+		}
+
+	    /**
+	     * Update counters on unassignment of an event
+	     */
+		@Override
+		public void unassigned(Assignment<TimEvent, TimLocation> assignment, TimLocation location) {
+	        int[] score = location.score(assignment);
+	        iScore[0] -= score[0];
+	        iScore[1] -= score[1];
+	        iScore[2] -= score[2];
+		}
+
+	    /** Value of single event on a day criterion */
+	    public int oneTimePenalty() {
+	        return iScore[0];
+	    }
+
+	    /** Value of last slot of the day criterion */
+	    public int lastTimePenalty() {
+	        return iScore[1];
+	    }
+
+	    /** Value of more than two events consecutively criterion */
+	    public int threeOrMoreTimesPenalty() {
+	        return iScore[2];
+	    }
+	    
+	    /**
+	     * Solution value
+	     */
+	    public double getTotalValue() {
+	        return iScore[0]+iScore[1]+iScore[2];
+	    }
+	    
+	    /** CSV solution line:
+	     * one event a day,
+	     * use of last time of a day,
+	     * more three or more events consecutively
+	     */
+	    public String csvLine() { 
+	        return 
+	            iScore[0]+","+
+	            iScore[1]+","+
+	            iScore[2];
+	    }
+    }
+
+	@Override
+	public AssignmentConstraintContext<TimEvent, TimLocation> createAssignmentContext(Assignment<TimEvent, TimLocation> assignment) {
+		return new TTComp02Context(assignment);
+	}
+
+	@Override
+	public Assignment<TimEvent, TimLocation> createAssignment(int index, Assignment<TimEvent, TimLocation> assignment) {
+		return new TimAssignment(this, index, assignment);
+	}
 }

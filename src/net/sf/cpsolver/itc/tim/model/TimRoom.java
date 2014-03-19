@@ -3,8 +3,10 @@ package net.sf.cpsolver.itc.tim.model;
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.model.Constraint;
-import net.sf.cpsolver.ifs.model.ConstraintListener;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.ConstraintWithContext;
+import org.cpsolver.ifs.model.ConstraintListener;
 
 /**
  * Representation of a room constraint. It is not allowed to assign two 
@@ -33,8 +35,7 @@ import net.sf.cpsolver.ifs.model.ConstraintListener;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class TimRoom extends Constraint<TimEvent, TimLocation> {
-    private TimLocation[] iTable = new TimLocation[45];
+public class TimRoom extends ConstraintWithContext<TimEvent, TimLocation, TimRoom.Context> {
 	private int iSize;
 	
 	/**
@@ -44,12 +45,8 @@ public class TimRoom extends Constraint<TimEvent, TimLocation> {
 	 */
 	public TimRoom(long id, int size) {
 		super();
-		iAssignedVariables=null;
 		iId = id;
 		iSize = size;
-        for (int i=0;i<45;i++) {
-            iTable[i]=null;
-        }
 	}
 	
 	/** Room size */
@@ -58,24 +55,27 @@ public class TimRoom extends Constraint<TimEvent, TimLocation> {
 	}
 	
 	/** Compute conflicts: check whether another event is assigned in this room in the given time */
-	public void computeConflicts(TimLocation value, Set<TimLocation> conflicts) {
-		TimLocation location = (TimLocation)value;
+	public void computeConflicts(Assignment<TimEvent, TimLocation> assignment, TimLocation location, Set<TimLocation> conflicts) {
 		if (sameRoom(location.room())) {
-			if (iTable[location.time()]!=null && !iTable[location.time()].variable().equals(location.variable())) {
-				conflicts.add(iTable[location.time()]);
-			}
+			TimLocation conflict = getLocation(assignment, location.time());
+			if (conflict!=null && !conflict.variable().equals(location.variable()))
+				conflicts.add(conflict);
 		}
 	}
 	
 	/** Return location that is assigned in this room at given time (if any) */
-	public TimLocation getLocation(int time) {
-	    return iTable[time];
+	public TimLocation getLocation(Assignment<TimEvent, TimLocation> assignment, int time) {
+	    return getContext(assignment).getLocation(time);
 	}
 	
 	/** Compute conflicts: check whether another event is assigned in this room in the given time */
-	public boolean inConflict(TimLocation value) {
-        TimLocation location = (TimLocation)value;
-        return (sameRoom(location.room()) && iTable[location.time()]!=null && !iTable[location.time()].variable().equals(location.variable()));
+	public boolean inConflict(Assignment<TimEvent, TimLocation> assignment, TimLocation location) {
+		if (sameRoom(location.room())) {
+			TimLocation conflict = getLocation(assignment, location.time());
+			return conflict!=null && !conflict.variable().equals(location.variable());
+		} else {
+			return false;
+		}
 	}
 	
 	/** Two events are consistent if they are using this room at different times */
@@ -94,26 +94,61 @@ public class TimRoom extends Constraint<TimEvent, TimLocation> {
 	}
 
 	/** Update room assignment table */
-	public void assigned(long iteration, TimLocation loc) {
-	    //super.assigned(iteration, value);
-	    if (sameRoom(loc.room())) {
-	        if (iTable[loc.time()]!=null) {
-	            Set<TimLocation> confs = new HashSet<TimLocation>(); confs.add(iTable[loc.time()]);
-	            iTable[loc.time()].variable().unassign(iteration);
-	            iTable[loc.time()]=loc;
-                if (iConstraintListeners!=null)
-                    for (ConstraintListener<TimLocation> listener: iConstraintListeners)
-                        listener.constraintAfterAssigned(iteration, this, loc, confs);
-	        } else {
-	            iTable[loc.time()]=loc;
-	        }
-	    }
+	public void assigned(Assignment<TimEvent, TimLocation> assignment, long iteration, TimLocation location) {
+		if (sameRoom(location.room())) {
+			Context context = getContext(assignment);
+			TimLocation conflict = context.getLocation(location.time());
+			if (iConstraintListeners != null && conflict != null) {
+				Set<TimLocation> confs = new HashSet<TimLocation>();
+				confs.add(conflict);
+				assignment.unassign(iteration, conflict.variable());
+				context.assigned(assignment, location);
+				for (ConstraintListener<TimEvent, TimLocation> listener: iConstraintListeners)
+					listener.constraintAfterAssigned(assignment, iteration, this, location, confs);
+			} else {
+				context.assigned(assignment, location);
+			}
+        }
     }
 		
     /** Update room assignment table */
-    public void unassigned(long iteration, TimLocation value) {
-        //super.unassigned(iteration, value);
-        TimLocation loc = (TimLocation)value;
-        if (sameRoom(loc.room())) iTable[loc.time()]=null;
+    public void unassigned(Assignment<TimEvent, TimLocation> assignment, long iteration, TimLocation location) {
+    	if (sameRoom(location.room()))
+    		getContext(assignment).unassigned(assignment, location);
     }
+    
+    public class Context implements AssignmentConstraintContext<TimEvent, TimLocation> {
+        private TimLocation[] iTable = new TimLocation[45];
+
+    	public Context(Assignment<TimEvent, TimLocation> assignment) {
+            for (int i = 0; i < 45; i++)
+            	iTable[i] = null;
+            for (TimEvent event: variables()) {
+            	TimLocation location = assignment.getValue(event);
+            	if (location != null && sameRoom(location.room()))
+            		iTable[location.time()] = location;
+            }
+    	}
+
+		@Override
+		public void assigned(Assignment<TimEvent, TimLocation> assignment, TimLocation location) {
+			iTable[location.time()] = location;
+		}
+
+		@Override
+		public void unassigned(Assignment<TimEvent, TimLocation> assignment, TimLocation location) {
+			iTable[location.time()] = null;
+		}
+
+		/** Return location that is assigned in this room at given time (if any) */
+		public TimLocation getLocation(int time) {
+		    return iTable[time];
+		}
+    	
+    }
+
+	@Override
+	public Context createAssignmentContext(Assignment<TimEvent, TimLocation> assignment) {
+		return new Context(assignment);
+	}
 }

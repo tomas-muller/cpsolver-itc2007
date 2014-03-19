@@ -1,8 +1,9 @@
 package net.sf.cpsolver.itc.heuristics.neighbour;
 
-import net.sf.cpsolver.ifs.model.SimpleNeighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.SimpleNeighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
 
 /**
  * Reassignment of a variable.
@@ -36,10 +37,10 @@ public class ItcSimpleNeighbour<V extends Variable<V, T>, T extends Value<V, T>>
      * @param value new value to be assigned 
      * @param doubleValue change in overall solution value
      */
-    public ItcSimpleNeighbour(V variable, T value, double doubleValue) {
+    public ItcSimpleNeighbour(Assignment<V, T> assignment, V variable, T value, double doubleValue) {
         super(variable,value);
         iValue = doubleValue;
-        if (variable.getAssignment()==null) iValue -= 5000;
+        if (assignment.getValue(variable) == null) iValue -= 5000;
     }
     
     /**
@@ -47,11 +48,12 @@ public class ItcSimpleNeighbour<V extends Variable<V, T>, T extends Value<V, T>>
      * @param variable variable to be reassigned
      * @param value new value to be assigned 
      */
-    public ItcSimpleNeighbour(V variable, T value) {
+    public ItcSimpleNeighbour(Assignment<V, T> assignment, V variable, T value) {
         super(variable,value);
-        iValue = value.toDouble();
-        if (variable.getAssignment()!=null) 
-            iValue -= variable.getAssignment().toDouble();
+        iValue = value.toDouble(assignment);
+        T old = assignment.getValue(variable);
+        if (old != null) 
+            iValue -= old.toDouble(assignment);
         else
             iValue -= 5000;
     }
@@ -59,21 +61,13 @@ public class ItcSimpleNeighbour<V extends Variable<V, T>, T extends Value<V, T>>
     /**
      * Change in overall solution value
      */
-    public double value() {
+    public double value(Assignment<V, T> assignment) {
         return iValue;
     }
     
     /** String representation */
     public String toString() {
-        return "Simple "+getVariable().getName()+" "+
-            (getVariable().getAssignment()==null?
-                    "null"
-                :
-                    getVariable().getAssignment().getName()+
-                    " (val="+getVariable().getAssignment().toDouble()+")"
-              )+" -> "+
-              getValue().getName()+
-              " (val="+getValue().toDouble()+")";
+        return "Simple " + getVariable().getName() + " := " + getValue().getName() + " (val = " + iValue + ")";
     }
     
 }

@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.tim.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection;
 import net.sf.cpsolver.itc.tim.model.TTComp02Model;
@@ -51,22 +52,23 @@ public class TimRoomMove implements NeighbourSelection<TimEvent, TimLocation>, H
     /** Neighbour selection */
     public Neighbour<TimEvent, TimLocation> selectNeighbour(Solution<TimEvent, TimLocation> solution) {
         TTComp02Model model = (TTComp02Model)solution.getModel();
+        Assignment<TimEvent, TimLocation> assignment = solution.getAssignment();
         TimEvent event = (TimEvent)ToolBox.random(model.variables());
-        TimLocation location = (TimLocation)event.getAssignment();
+        TimLocation location = assignment.getValue(event);
         int time = (location==null?ToolBox.random(45):location.time());
         if (location==null) {
             if (!event.isAvailable(time)) return null;
             for (TimStudent s: event.students()) {
-                if (s.getLocation(time)!=null) return null;
+                if (s.getLocation(assignment, time)!=null) return null;
             }
         }
         int rx = ToolBox.random(event.rooms().size());
         for (int r=0;r<event.rooms().size();r++) {
             TimRoom room = event.rooms().get((r+rx)%event.rooms().size());
-            TimLocation conflict = (TimLocation)room.getLocation(time);
+            TimLocation conflict = (TimLocation)room.getLocation(assignment, time);
             if (conflict==null) {
-                ItcSimpleNeighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event, time, room));
-                if (!iHC || n.value()<=0) return n;
+                ItcSimpleNeighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(assignment, event, new TimLocation(event, time, room));
+                if (!iHC || n.value(assignment)<=0) return n;
             }
         }
         return null;

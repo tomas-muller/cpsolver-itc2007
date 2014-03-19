@@ -3,8 +3,9 @@ package net.sf.cpsolver.itc.exam.model;
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.model.BinaryConstraint;
-import net.sf.cpsolver.ifs.model.ConstraintListener;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.BinaryConstraint;
+import org.cpsolver.ifs.model.ConstraintListener;
 
 /**
  * Same period binary constraint.
@@ -39,7 +40,6 @@ public class ExSamePeriod extends BinaryConstraint<ExExam, ExPlacement> {
      */
     public ExSamePeriod(ExExam first, ExExam second, boolean hard) {
         super();
-        iAssignedVariables=null;
         iIsHard = hard;
         addVariable(first);
         addVariable(second);
@@ -48,23 +48,23 @@ public class ExSamePeriod extends BinaryConstraint<ExExam, ExPlacement> {
     /**
      * Compute conflicts: two exams are in conflict if placed in different periods
      */
-    public void computeConflicts(ExPlacement value, Set<ExPlacement> conflicts) {
+    public void computeConflicts(Assignment<ExExam, ExPlacement> assignment, ExPlacement value, Set<ExPlacement> conflicts) {
         if (!iIsHard) return;
-        if (inConflict(value))
-            conflicts.add(another(value.variable()).getAssignment());
+        if (inConflict(assignment, value))
+            conflicts.add(assignment.getValue(another(value.variable())));
     }
     
     /**
      * Check for conflicts: two exams are in conflict if placed in different periods
      */
-    public boolean inConflict(ExPlacement value) {
+    public boolean inConflict(Assignment<ExExam, ExPlacement> assignment, ExPlacement value) {
         if (!iIsHard) return false;
         ExPlacement first, second;
         if (value.variable().equals(first())) {
             first = value;
-            second = second().getAssignment();
+            second = assignment.getValue(second());
         } else {
-            first = first().getAssignment();
+            first = assignment.getValue(first());
             second = value;
         }
         return (first!=null && second!=null && first.getPeriodIndex()!=second.getPeriodIndex());
@@ -103,27 +103,27 @@ public class ExSamePeriod extends BinaryConstraint<ExExam, ExPlacement> {
         return iIsHard;
     }
     
-    public void assigned(long iteration, ExPlacement value) {
+    public void assigned(Assignment<ExExam, ExPlacement> assignment, long iteration, ExPlacement value) {
         if (!isHard()) return;
         if (value.variable().equals(first())) {
-            ExPlacement first = (ExPlacement)value;
-            ExPlacement second = (ExPlacement)second().getAssignment();
+            ExPlacement first = value;
+            ExPlacement second = assignment.getValue(second());
             if (first!=null && second!=null && first.getPeriodIndex()!=second.getPeriodIndex()) {
                 Set<ExPlacement> conf = new HashSet<ExPlacement>(); conf.add(second);
-                second.variable().unassign(iteration);
+                assignment.unassign(iteration, second());
                 if (iConstraintListeners!=null)
-                	for (ConstraintListener<ExPlacement> listener: iConstraintListeners)
-                        listener.constraintAfterAssigned(iteration, this, value, conf);
+                	for (ConstraintListener<ExExam, ExPlacement> listener: iConstraintListeners)
+                        listener.constraintAfterAssigned(assignment, iteration, this, value, conf);
             }
         } else {
-            ExPlacement first = (ExPlacement)first().getAssignment();
-            ExPlacement second = (ExPlacement)value;
+            ExPlacement first = assignment.getValue(first());
+            ExPlacement second = value;
             if (first!=null && second!=null && first.getPeriodIndex()!=second.getPeriodIndex()) {
                 Set<ExPlacement> conf = new HashSet<ExPlacement>(); conf.add(first);
-                first.variable().unassign(iteration);
+                assignment.unassign(iteration, first());
                 if (iConstraintListeners!=null)
-                	for (ConstraintListener<ExPlacement> listener: iConstraintListeners)
-                        listener.constraintAfterAssigned(iteration, this, value, conf);
+                	for (ConstraintListener<ExExam, ExPlacement> listener: iConstraintListeners)
+                        listener.constraintAfterAssigned(assignment, iteration, this, value, conf);
             }
         }
     }

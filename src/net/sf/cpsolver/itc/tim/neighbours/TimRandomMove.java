@@ -1,12 +1,13 @@
 package net.sf.cpsolver.itc.tim.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Model;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Model;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.tim.model.TimEvent;
 import net.sf.cpsolver.itc.tim.model.TimLocation;
@@ -49,27 +50,28 @@ public class TimRandomMove implements NeighbourSelection<TimEvent, TimLocation> 
     /** Neighbour selection */
     public Neighbour<TimEvent, TimLocation> selectNeighbour(Solution<TimEvent, TimLocation> solution) {
         Model<TimEvent, TimLocation> model = solution.getModel();
+        Assignment<TimEvent, TimLocation> assignment = solution.getAssignment();
         TimEvent evt = (TimEvent)ToolBox.random(model.variables());
-        TimLocation loc = evt.getAssignment();
+        TimLocation loc = assignment.getValue(evt);
         int slot = ToolBox.random(45);
         if (!evt.isAvailable(slot)) return null;
         if (loc!=null && loc.time()==slot) return null;
-        return findChange(evt, slot, (loc==null?null:loc.room()));
+        return findChange(assignment, evt, slot, (loc==null?null:loc.room()));
     }
         
-    private static ItcSimpleNeighbour<TimEvent, TimLocation> findChange(TimEvent event, int slot, TimRoom prefRoom) {
-        TimLocation loc = (TimLocation)event.getAssignment();
+    private static ItcSimpleNeighbour<TimEvent, TimLocation> findChange(Assignment<TimEvent, TimLocation> assignment, TimEvent event, int slot, TimRoom prefRoom) {
+        TimLocation loc = assignment.getValue(event);
         if (loc==null || loc.time()!=slot)
             for (TimStudent s: event.students()) {
-                if (s.getTable()[slot]!=null) return null;
+                if (s.getLocation(assignment, slot)!=null) return null;
             }
-        if (prefRoom!=null && prefRoom.getLocation(slot)==null)
-            return new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event,slot,prefRoom));
+        if (prefRoom!=null && prefRoom.getLocation(assignment, slot)==null)
+            return new ItcSimpleNeighbour<TimEvent, TimLocation>(assignment, event, new TimLocation(event,slot,prefRoom));
         int rx = ToolBox.random(event.rooms().size());
         for (int r=0;r<event.rooms().size();r++) {
             TimRoom room = event.rooms().get((r+rx)%event.rooms().size());
-            if (room.getLocation(slot)==null) 
-                return new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event,slot,room));
+            if (room.getLocation(assignment, slot)==null) 
+                return new ItcSimpleNeighbour<TimEvent, TimLocation>(assignment, event, new TimLocation(event,slot,room));
         }
         return null;
     }

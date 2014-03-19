@@ -20,7 +20,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
-import net.sf.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.DataProperties;
 import net.sf.cpsolver.itc.test.ItcTestClient.TestInstance;
 
 /**
@@ -59,7 +59,7 @@ import net.sf.cpsolver.itc.test.ItcTestClient.TestInstance;
  * Model.Extension=out<br>
  * <br>
  * #Termination condition<br>
- * Termination.Class=net.sf.cpsolver.ifs.termination.GeneralTerminationCondition<br>
+ * Termination.Class=org.cpsolver.ifs.termination.GeneralTerminationCondition<br>
  * Termination.StopWhenComplete=false<br>
  * Termination.TimeOut=288<br>
  * <br>

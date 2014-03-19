@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.exam.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.exam.model.ExExam;
 import net.sf.cpsolver.itc.exam.model.ExModel;
 import net.sf.cpsolver.itc.exam.model.ExPeriod;
@@ -51,28 +52,29 @@ public class ExRoomMove implements NeighbourSelection<ExExam, ExPlacement>, Hill
     public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
         ExExam exam = (ExExam)ToolBox.random(model.variables());
-        ExPlacement placement = (ExPlacement)exam.getAssignment();
+        Assignment<ExExam, ExPlacement> assignment = solution.getAssignment();
+        ExPlacement placement = assignment.getValue(exam);
         int periodIdx = (placement==null?ToolBox.random(model.getNrPeriods()):placement.getPeriodIndex());
         ExPeriod period = model.getPeriod(periodIdx);
         if (exam.getLength()>period.getLength()) return null;
         int rx = ToolBox.random(model.getRooms().size());
         for (int r=0;r<model.getRooms().size();r++) {
             ExRoom room = model.getRooms().get((r+rx)%model.getRooms().size());
-            if (room.inConflict(exam,period)) continue;
+            if (room.inConflict(assignment, exam,period)) continue;
             if (room.getSize()<exam.getStudents().size()) continue;
             ExPlacement p = new ExPlacement(exam, period, room);
             if (!model.areBinaryViolationsAllowed() || !model.areDirectConflictsAllowed()) {
-                if (model.inConflict(p)) continue;
+                if (model.inConflict(assignment, p)) continue;
             }
             double value = 0;
             if (placement==null) {
-                value = p.toDouble();
+                value = p.toDouble(assignment);
             } else {
-                value = model.getMixedDurationWeight()*(p.mixedDurationsPenalty()-placement.mixedDurationsPenalty()) +
+                value = model.getMixedDurationWeight()*(p.mixedDurationsPenalty(assignment)-placement.mixedDurationsPenalty(assignment)) +
                         room.getPenalty() - placement.getRoom().getPenalty(); 
             }
-            ItcSimpleNeighbour<ExExam, ExPlacement> n = new ItcSimpleNeighbour<ExExam, ExPlacement>(exam, p, value);
-            if (!iHC || n.value()<=0) return n;
+            ItcSimpleNeighbour<ExExam, ExPlacement> n = new ItcSimpleNeighbour<ExExam, ExPlacement>(assignment, exam, p, value);
+            if (!iHC || n.value(assignment)<=0) return n;
         }
         return null;
     }

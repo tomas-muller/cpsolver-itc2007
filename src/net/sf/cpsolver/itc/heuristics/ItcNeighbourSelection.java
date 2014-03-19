@@ -2,16 +2,19 @@ package net.sf.cpsolver.itc.heuristics;
 
 import org.apache.log4j.Logger;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.heuristics.StandardNeighbourSelection;
-import net.sf.cpsolver.ifs.heuristics.ValueSelection;
-import net.sf.cpsolver.ifs.heuristics.VariableSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentContext;
+import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.heuristics.StandardNeighbourSelection;
+import org.cpsolver.ifs.heuristics.ValueSelection;
+import org.cpsolver.ifs.heuristics.VariableSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
 import net.sf.cpsolver.itc.ItcModel;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber;
 import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch;
@@ -60,63 +63,44 @@ import net.sf.cpsolver.itc.heuristics.search.ItcGreatDeluge;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ItcNeighbourSelection<V extends Variable<V, T>, T extends Value<V, T>> extends StandardNeighbourSelection<V, T> {
+public class ItcNeighbourSelection<V extends Variable<V, T>, T extends Value<V, T>> extends NeighbourSelectionWithContext<V,T,ItcNeighbourSelection<V,T>.Phase> {
     private static Logger sLog = Logger.getLogger(ItcNeighbourSelection.class);
-    private int iPhase = 0;
     private NeighbourSelection<V,T> iConstruct, iFirst, iSecond, iThird;
     
     /** Constructor */
     @SuppressWarnings("unchecked")
 	public ItcNeighbourSelection(DataProperties properties) throws Exception {
-        super(properties);
+        super();
         
         double valueWeight = properties.getPropertyDouble("Itc.Construction.ValueWeight", 0);
-        iConstruct = 
-            (NeighbourSelection<V,T>)
-            Class.forName(properties.getProperty("Itc.Construction",StandardNeighbourSelection.class.getName())).
-            getConstructor(new Class[] {DataProperties.class}).
-            newInstance(new Object[] {properties});
+        iConstruct = (NeighbourSelection<V,T>)Class.forName(properties.getProperty("Itc.Construction",StandardNeighbourSelection.class.getName())).
+        		getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[] {properties});
         if (iConstruct instanceof StandardNeighbourSelection) {
             StandardNeighbourSelection<V,T> std = (StandardNeighbourSelection<V,T>)iConstruct;
-            std.setValueSelection(
-                    (ValueSelection<V,T>)
+            std.setValueSelection((ValueSelection<V,T>)
                     Class.forName(properties.getProperty("Itc.ConstructionValue",ItcTabuSearch.class.getName())).
-                    getConstructor(new Class[] {DataProperties.class}).
-                    newInstance(new Object[] {properties}));
-            std.setVariableSelection(
-                    (VariableSelection<V,T>)
+                    getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[] {properties}));
+            std.setVariableSelection((VariableSelection<V,T>)
                     Class.forName(properties.getProperty("Itc.ConstructionVariable",ItcUnassignedVariableSelection.class.getName())).
-                    getConstructor(new Class[] {DataProperties.class}).
-                    newInstance(new Object[] {properties}));
+                    getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[] {properties}));
             try {
-                std.
-                    getValueSelection().
-                    getClass().
-                    getMethod("setValueWeight", new Class[] {double.class}).
-                    invoke(std.getValueSelection(), new Object[] {new Double(valueWeight)});
+                std.getValueSelection().getClass().getMethod("setValueWeight", new Class[] {double.class}).
+                	invoke(std.getValueSelection(), new Object[] {new Double(valueWeight)});
             } catch (NoSuchMethodException e) {}
         }
         try {
-            iConstruct.
-                getClass().
-                getMethod("setValueWeight", new Class[] {double.class}).
-                invoke(iConstruct, new Object[] {new Double(valueWeight)});
+            iConstruct.getClass().getMethod("setValueWeight", new Class[] {double.class}).invoke(iConstruct, new Object[] {new Double(valueWeight)});
         } catch (NoSuchMethodException e) {}
         
-        iFirst = (NeighbourSelection<V,T>)
-            Class.forName(properties.getProperty("Itc.First",ItcHillClimber.class.getName())).
-            getConstructor(new Class[] {DataProperties.class}).
-            newInstance(new Object[] {properties});
+        iFirst = (NeighbourSelection<V,T>)Class.forName(properties.getProperty("Itc.First",ItcHillClimber.class.getName())).
+            getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[] {properties});
         
-        iSecond = (NeighbourSelection<V,T>)
-            Class.forName(properties.getProperty("Itc.Second",ItcGreatDeluge.class.getName())).
-            getConstructor(new Class[] {DataProperties.class}).
-            newInstance(new Object[] {properties});
+        iSecond = (NeighbourSelection<V,T>)Class.forName(properties.getProperty("Itc.Second",ItcGreatDeluge.class.getName())).
+            getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[] {properties});
         
         if (properties.getProperty("Itc.Third")!=null)
             iThird = (NeighbourSelection<V,T>)Class.forName(properties.getProperty("Itc.Third")).
-                getConstructor(new Class[] {DataProperties.class}).
-                newInstance(new Object[] {properties});
+                getConstructor(new Class[] {DataProperties.class}).newInstance(new Object[] {properties});
     }
     
     /** Initialization */
@@ -128,42 +112,59 @@ public class ItcNeighbourSelection<V extends Variable<V, T>, T extends Value<V, 
         if (iThird!=null) iThird.init(solver);
     }
     
-    /** Change phase, i.e., what selector is to be used next */
-    protected void incPhase(Solution<V,T> solution, String name) {
-        iPhase ++;
-        if (sLog.isInfoEnabled()) {
-            ItcModel<V,T> m = (ItcModel<V,T>)solution.getModel();
-            sLog.info("**CURR["+solution.getIteration()+"]** P:"+Math.round(m.getTotalValue())+
-                    " ("+m.csvLine()+")");
-            sLog.info("Phase "+name);
-        }
-    }
-    
     /** Neighbour selection  -- based on the phase, construction strategy is used first,
      * than it iterates between two or three given neighbour selections*/
     public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
         Neighbour<V,T> n = null;
-        switch (iPhase) {
+        Phase phase = getContext(solution.getAssignment());
+        switch (phase.getPhase()) {
             case 0 :
                 n = iConstruct.selectNeighbour(solution);
                 if (n!=null) return n;
-                incPhase(solution, "first");
+                phase.incPhase(solution, "first");
             case 1 :
                 n = iFirst.selectNeighbour(solution);
                 if (n!=null) return n;
-                incPhase(solution, "second");
+                phase.incPhase(solution, "second");
             case 2 :
                 n = iSecond.selectNeighbour(solution);
                 if (n!=null) return n;
-                incPhase(solution, "third");
+                phase.incPhase(solution, "third");
             case 3 :
                 n = (iThird==null?null:iThird.selectNeighbour(solution));
                 if (n!=null) return n;
-                incPhase(solution, "first");
+                phase.incPhase(solution, "first");
             default :
-                iPhase = 1;
+            	phase.setPhase(1);
                 return selectNeighbour(solution);
         }
     }
+    
+    public class Phase implements AssignmentContext {
+        private int iPhase = 0;
+
+		public int getPhase() {
+			return iPhase;
+		}
+		
+		/** Change phase, i.e., what selector is to be used next */
+		public void incPhase(Solution<V,T> solution, String name) {
+	        iPhase ++;
+	        if (sLog.isInfoEnabled()) {
+	            ItcModel<V,T> m = (ItcModel<V,T>)solution.getModel();
+	            sLog.info("**CURR["+solution.getIteration()+"]** P:"+Math.round(m.getTotalValue(solution.getAssignment()))+" ("+m.csvLine(solution.getAssignment())+")");
+	            sLog.info("Phase "+name);
+	        }
+		}
+		
+		public void setPhase(int phase) {
+			iPhase = phase;
+		}
+    }
+
+	@Override
+	public Phase createAssignmentContext(Assignment<V, T> assignment) {
+		return new Phase();
+	}
 
 }

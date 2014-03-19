@@ -1,12 +1,13 @@
 package net.sf.cpsolver.itc.heuristics;
 
-import net.sf.cpsolver.ifs.heuristics.VariableSelection;
-import net.sf.cpsolver.ifs.model.Model;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.VariableSelection;
+import org.cpsolver.ifs.model.Model;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
 
 /**
  * Unassigned variable selection. The "biggest" variable (using {@link Variable#compareTo(Object)})
@@ -44,9 +45,10 @@ public class ItcUnassignedVariableSelection<V extends Variable<V, T>, T extends 
     /** Variable selection */
     public V selectVariable(Solution<V,T> solution) {
         Model<V,T> model = solution.getModel();
-        if (model.nrUnassignedVariables()==0) return null;
+        Assignment<V, T> assignment = solution.getAssignment();
+        if (assignment.nrAssignedVariables() == model.variables().size()) return null; 
         V variable = null;
-        for (V v: model.unassignedVariables()) {
+        for (V v: assignment.unassignedVariables(model)) {
             if (variable==null || v.compareTo(variable)<0) variable = v;
         }
         return variable;

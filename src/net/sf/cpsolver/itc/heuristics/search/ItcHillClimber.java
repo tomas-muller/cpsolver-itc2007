@@ -8,15 +8,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solution.SolutionListener;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentContext;
+import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Model;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solution.SolutionListener;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion;
 import net.sf.cpsolver.itc.heuristics.neighbour.selection.ItcNotConflictingMove;
@@ -68,15 +72,12 @@ import org.apache.log4j.Logger;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T>, SolutionListener<V,T>, LazyNeighbourAcceptanceCriterion<V,T> {
+public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> extends NeighbourSelectionWithContext<V,T,ItcHillClimber<V,T>.Context> implements SolutionListener<V,T>, LazyNeighbourAcceptanceCriterion<V,T> {
     private static Logger sLog = Logger.getLogger(ItcHillClimber.class);
     private static DecimalFormat sDF2 = new DecimalFormat("0.00");
     private static boolean sInfo = sLog.isInfoEnabled();
     private int iMaxIdleIters = 200000;
-    private int iLastImprovingIter = 0;
-    private int iIter = 0;
     private List<NeighbourSelector<V,T>> iNeighbourSelectors = new ArrayList<NeighbourSelector<V,T>>();
-    private long iT0 = -1;
     private boolean iRandomSelection = false;
     private boolean iUpdatePoints = false;
     private double iTotalBonus;
@@ -113,6 +114,7 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> imp
     
     /** Initialization */
     public void init(Solver<V,T> solver) {
+    	super.init(solver);
         solver.currentSolution().addSolutionListener(this);
         iTotalBonus = 0;
         for (NeighbourSelector<V,T> s: iNeighbourSelectors) {
@@ -142,18 +144,10 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> imp
      * Return null when the given number of idle iterations is reached.
      */
     public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
-        if (iT0<0) iT0 = System.currentTimeMillis();
+        Context context = getContext(solution.getAssignment());
+        context.setT0();
         while (true) {
-            iIter ++;
-            if (iIter % 10000 == 0) {
-                if (sInfo) {
-                    sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
-                    if (iUpdatePoints)
-                        for (NeighbourSelector<V,T> ns: iNeighbourSelectors)
-                            sLog.info("  "+ns+" ("+sDF2.format(ns.getPoints())+" pts, "+sDF2.format(100.0*(iUpdatePoints?ns.getPoints():ns.getBonus())/totalPoints())+"%)");
-                }
-            }
-            if (iIter-iLastImprovingIter>=iMaxIdleIters) break;
+        	if (context.incIter(solution)) break;
             NeighbourSelector<V,T> ns = null;
             if (iRandomSelection) {
                 ns = ToolBox.random(iNeighbourSelectors);
@@ -170,15 +164,15 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> imp
                 if (n instanceof ItcLazyNeighbour) {
                     ((ItcLazyNeighbour<V,T>)n).setAcceptanceCriterion(this);
                     return n;
-                } else if (n.value()<=0.0) return n;
+                } else if (n.value(solution.getAssignment())<=0.0) return n;
             }
         }
-        iIter = 0; iLastImprovingIter = 0; iT0 = -1;
+        context.reset();
         return null;
     }
     
     /** Implementation of {@link net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion} interface */
-    public boolean accept(ItcLazyNeighbour<V,T> neighbour, double value) {
+    public boolean accept(Assignment<V,T> assignment, ItcLazyNeighbour<V,T> neighbour, double value) {
         return value<=0;
     }
 
@@ -186,7 +180,7 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> imp
      * Memorize the iteration when the last best solution was found.
      */
     public void bestSaved(Solution<V,T> solution) {
-        iLastImprovingIter = iIter;
+    	getContext(solution.getAssignment()).bestSaved(solution.getModel());
     }
     public void solutionUpdated(Solution<V,T> solution) {}
     public void getInfo(Solution<V,T> solution, Map<String, String> info) {}
@@ -240,7 +234,7 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> imp
                 long t0 = System.currentTimeMillis();
                 Neighbour<V,T> n = iSelection.selectNeighbour(solution);
                 long t1 = System.currentTimeMillis();
-                update(n, t1-t0);
+                update(solution.getAssignment(), n, t1-t0);
                 return n;
             } else
                 return iSelection.selectNeighbour(solution);
@@ -251,17 +245,17 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> imp
          * @param n generated move
          * @param time time needed to generate the move (in milliseconds)
          */
-        public void update(Neighbour<V,T> n, long time) {
+        public void update(Assignment<V,T> a, Neighbour<V,T> n, long time) {
             iNrCalls ++;
             iTime += time;
             if (n!=null) {
                 iNrNotNull++;
-                if (n.value()==0) {
+                if (n.value(a)==0) {
                     iNrSideMoves++;
                     iPoints += 0.1;
-                } else if (n.value()<0) {
+                } else if (n.value(a)<0) {
                     iNrImprovingMoves++;
-                    iPoints -= n.value();
+                    iPoints -= n.value(a);
                 } else {
                     iPoints *= 0.9999;
                 }
@@ -298,4 +292,42 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> imp
                 sDF.format(speed())+" it/s";
         }
     }
+    
+    public class Context implements AssignmentContext {
+        private int iLastImprovingIter = 0;
+        private int iIter = 0;
+        private long iT0 = -1;
+
+        public void reset() {
+            iIter = 0;
+            iLastImprovingIter = 0;
+            iT0 = -1;
+        }
+
+        protected void setT0() {
+            if (iT0 < 0) iT0 = System.currentTimeMillis();
+        }
+        
+        protected boolean incIter(Solution<V, T> solution) {
+            iIter ++;
+            if (iIter % 10000 == 0) {
+                if (sInfo) {
+                    sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
+                    if (iUpdatePoints)
+                        for (NeighbourSelector<V,T> ns: iNeighbourSelectors)
+                            sLog.info("  "+ns+" ("+sDF2.format(ns.getPoints())+" pts, "+sDF2.format(100.0*(iUpdatePoints?ns.getPoints():ns.getBonus())/totalPoints())+"%)");
+                }
+            }
+            return iIter-iLastImprovingIter >= iMaxIdleIters; 
+        }
+        
+        protected void bestSaved(Model<V, T> model) {
+        	iLastImprovingIter = iIter;
+        }
+    }
+
+	@Override
+	public Context createAssignmentContext(Assignment<V, T> assignment) {
+		return new Context();
+	}
 }

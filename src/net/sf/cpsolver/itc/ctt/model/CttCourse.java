@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.cpsolver.ifs.assignment.Assignment;
+
 /**
  * Representation of a course. A course consists of a teacher (see {@link CttTeacher}, given number of lectures (see {@link CttLecture}),
  * minimal number of days, number of students, and a list of curriculas (see {@link CttCurricula}. Moreover, some times may not be available.
@@ -138,13 +140,14 @@ public class CttCourse {
      * The lectures of each course must be spread into a minimum number of days. 
      * Each day below the minimum counts as 5 points of penalty.
      */
-    public int getMinDaysPenalty() {
+    public int getMinDaysPenalty(Assignment<CttLecture, CttPlacement> assignment) {
         int days = 0, nrDays = 0;
         for (int i=0;i<iLectures.length;i++) {
-            if (iLectures[i].getAssignment()==null) {
+        	CttPlacement p = assignment.getValue(iLectures[i]);
+            if (p == null) {
                 nrDays++;
             } else {
-                int day = 1 << (((CttPlacement)iLectures[i].getAssignment()).getDay());
+                int day = 1 << p.getDay();
                 if ((days & day) == 0) nrDays ++;
                 days |= day;
             }
@@ -156,17 +159,17 @@ public class CttCourse {
      * All lectures of a course should be given in the same room. 
      * Each distinct room used for the lectures of a course, but the first, counts as 1 point of penalty.
      */
-    public int getRoomPenalty() {
-        return Math.max(0, getRooms().size() - 1);
+    public int getRoomPenalty(Assignment<CttLecture, CttPlacement> assignment) {
+        return Math.max(0, getRooms(assignment).size() - 1);
     }
     
     /**
      * Compute all rooms into which lectures of this course are assigned.
      */
-    public Set<CttRoom> getRooms() {
+    public Set<CttRoom> getRooms(Assignment<CttLecture, CttPlacement> assignment) {
     	Set<CttRoom> rooms = new HashSet<CttRoom>();
         for (int i=0;i<iLectures.length;i++) {
-            CttPlacement p = (CttPlacement)iLectures[i].getAssignment();
+            CttPlacement p = assignment.getValue(iLectures[i]);
             if (p!=null) rooms.add(p.getRoom());
         }
         return rooms;

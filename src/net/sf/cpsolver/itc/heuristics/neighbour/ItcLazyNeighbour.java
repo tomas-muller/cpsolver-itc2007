@@ -1,8 +1,9 @@
 package net.sf.cpsolver.itc.heuristics.neighbour;
 
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -33,7 +34,7 @@ import net.sf.cpsolver.itc.ItcModel;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public abstract class ItcLazyNeighbour<V extends Variable<V, T>, T extends Value<V, T>> extends Neighbour<V,T> {
+public abstract class ItcLazyNeighbour<V extends Variable<V, T>, T extends Value<V, T>> implements Neighbour<V,T> {
     private LazyNeighbourAcceptanceCriterion<V,T> iCriterion = null;
     
     /**
@@ -48,22 +49,22 @@ public abstract class ItcLazyNeighbour<V extends Variable<V, T>, T extends Value
      * Assign neighbour, check given acceptance criterion, and undo
      * assignment if the change is not accepted. 
      */
-    public void assign(long iteration) {
-        double before = getModel().getTotalValue();
-        doAssign(iteration);
-        double after = getModel().getTotalValue();
-        if (!iCriterion.accept(this, after - before)) undoAssign(iteration);
+    public void assign(Assignment<V, T> assignment, long iteration) {
+        double before = getModel().getTotalValue(assignment);
+        doAssign(assignment, iteration);
+        double after = getModel().getTotalValue(assignment);
+        if (!iCriterion.accept(assignment, this, after - before)) undoAssign(assignment, iteration);
     }
     /**
      * Return -1 (neighbour is always accepted). The search strategy that
      * is using this neighbour must implement {@link LazyNeighbourAcceptanceCriterion}.
      */
-    public double value() { return -1; }
+    public double value(Assignment<V, T> assignment) { return -1; }
     
     /** Perform assignment */
-    protected abstract void doAssign(long iteration);
+    protected abstract void doAssign(Assignment<V, T> assignment, long iteration);
     /** Undo assignment */
-    protected abstract void undoAssign(long iteration);
+    protected abstract void undoAssign(Assignment<V, T> assignment, long iteration);
     /** Return problem model (it is needed in order to be able to get
      * overall solution value before and after the assignment of this neighbour) */
     public abstract ItcModel<V,T> getModel();
@@ -80,6 +81,6 @@ public abstract class ItcLazyNeighbour<V extends Variable<V, T>, T extends Value
          * @param value change in overall solution value
          * @return true if the neighbour can be accepted (false to undo the assignment)
          */
-        public boolean accept(ItcLazyNeighbour<V,T> neighbour, double value);
+        public boolean accept(Assignment<V, T> assignment, ItcLazyNeighbour<V,T> neighbour, double value);
     }
 }

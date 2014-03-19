@@ -6,8 +6,8 @@ import java.net.Socket;
 
 import org.apache.log4j.Logger;
 
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.util.DataProperties;
 import net.sf.cpsolver.itc.ItcTest;
 
 /**

@@ -3,12 +3,13 @@ package net.sf.cpsolver.itc.exam.neighbours;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.exam.model.ExExam;
 import net.sf.cpsolver.itc.exam.model.ExModel;
 import net.sf.cpsolver.itc.exam.model.ExPeriod;
@@ -52,18 +53,19 @@ public class ExBestMove implements NeighbourSelection<ExExam, ExPlacement> {
     /** Neighbour selection */
     public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
+        Assignment<ExExam, ExPlacement> assignment = solution.getAssignment();
         ExExam worstExam = null; double worstValue = 0;
-        List<ExExam> assigned = new ArrayList<ExExam>(model.assignedVariables());
+        List<ExExam> assigned = new ArrayList<ExExam>(assignment.assignedVariables());
         int ex = ToolBox.random(assigned.size());
         for (int e=0;e<assigned.size();e++) {
             ExExam exam = assigned.get((e+ex)%assigned.size());
-            double value = exam.getAssignment().toDouble();
+            double value = assignment.getValue(exam).toDouble(assignment);
             if (worstExam==null || worstValue<value) {
                 worstExam = exam; worstValue = value;
             }
         }
         ExPlacement bestPlacement = null; double bestValue = 0;
-        if (worstExam==null || worstExam.getAssignment().toDouble()<=0) return null;
+        if (worstExam==null || assignment.getValue(worstExam).toDouble(assignment)<=0) return null;
         int px = ToolBox.random(model.getNrPeriods());
         int rx = ToolBox.random(model.getRooms().size());
         for (int p=0;p<model.getNrPeriods();p++) {
@@ -73,13 +75,13 @@ public class ExBestMove implements NeighbourSelection<ExExam, ExPlacement> {
                 ExRoom room = model.getRooms().get((r+rx)%model.getRooms().size());
                 if (room.getSize()<worstExam.getStudents().size()) continue;
                 ExPlacement placement = new ExPlacement(worstExam, period, room);
-                double value = placement.toDouble();
+                double value = placement.toDouble(assignment);
                 if (bestPlacement==null || bestValue>value) {
                     bestPlacement = placement; bestValue = value; 
                 }
             }
         }
-        if (bestPlacement==null || bestPlacement.equals(worstExam.getAssignment())) return null;
-        return new ItcSimpleNeighbour<ExExam, ExPlacement>(worstExam, bestPlacement, bestValue-worstValue);
+        if (bestPlacement==null || bestPlacement.equals(assignment.getValue(worstExam))) return null;
+        return new ItcSimpleNeighbour<ExExam, ExPlacement>(assignment, worstExam, bestPlacement, bestValue-worstValue);
     }
 }

@@ -3,12 +3,13 @@ package net.sf.cpsolver.itc.ctt.neighbours;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.ctt.model.CttCurricula;
 import net.sf.cpsolver.itc.ctt.model.CttLecture;
 import net.sf.cpsolver.itc.ctt.model.CttModel;
@@ -57,17 +58,18 @@ public class CttCurriculumCompactnessMove implements NeighbourSelection<CttLectu
     /** Neighbour selection */
     public Neighbour<CttLecture, CttPlacement> selectNeighbour(Solution<CttLecture, CttPlacement> solution) {
         CttModel model = (CttModel)solution.getModel();
-        if (model.getCompactPenalty(false)<=0) return null;
+        Assignment<CttLecture, CttPlacement> assignment = solution.getAssignment();
+        if (model.getCompactPenalty(assignment, false)<=0) return null;
         int cx = ToolBox.random(model.getCurriculas().size());
         for (int c=0;c<model.getCurriculas().size();c++) {
             CttCurricula curricula = model.getCurriculas().get((c+cx)%model.getCurriculas().size());
             List<CttPlacement> adepts = new ArrayList<CttPlacement>();
             for (int d=0;d<model.getNrDays();d++) {
                 for (int s=0;s<model.getNrSlotsPerDay();s++) {
-                    CttPlacement p = curricula.getConstraint().getPlacement(d, s);
+                    CttPlacement p = curricula.getConstraint().getPlacement(assignment, d, s);
                     if (p==null) continue;
-                    CttPlacement prev = (s==0?null:curricula.getConstraint().getPlacement(d, s-1));
-                    CttPlacement next = (s+1==model.getNrSlotsPerDay()?null:curricula.getConstraint().getPlacement(d, s+1));
+                    CttPlacement prev = (s==0?null:curricula.getConstraint().getPlacement(assignment, d, s-1));
+                    CttPlacement next = (s+1==model.getNrSlotsPerDay()?null:curricula.getConstraint().getPlacement(assignment, d, s+1));
                     if (next==null && prev==null) {
                         adepts.add(p);
                     }
@@ -77,7 +79,7 @@ public class CttCurriculumCompactnessMove implements NeighbourSelection<CttLectu
                 int ax = ToolBox.random(adepts.size());
                 for (int a=0;a<adepts.size();a++) {
                     CttPlacement adept = adepts.get((a+ax)%adepts.size());
-                    Neighbour<CttLecture, CttPlacement> n = findNeighbour(curricula, adept);
+                    Neighbour<CttLecture, CttPlacement> n = findNeighbour(assignment, curricula, adept);
                     if (n!=null) return n;
                 }
             }
@@ -85,8 +87,8 @@ public class CttCurriculumCompactnessMove implements NeighbourSelection<CttLectu
         return null;
     }
     
-    private Neighbour<CttLecture, CttPlacement> findNeighbour(CttCurricula curricula, CttPlacement placement) {
-        int compactPenalty = placement.getCompactPenalty();
+    private Neighbour<CttLecture, CttPlacement> findNeighbour(Assignment<CttLecture, CttPlacement> assignment, CttCurricula curricula, CttPlacement placement) {
+        int compactPenalty = placement.getCompactPenalty(assignment);
         CttModel model = (CttModel)placement.variable().getModel();
         int dx = ToolBox.random(model.getNrDays());
         int sx = ToolBox.random(model.getNrSlotsPerDay());
@@ -94,38 +96,38 @@ public class CttCurriculumCompactnessMove implements NeighbourSelection<CttLectu
             int day = (d+dx) % model.getNrDays();
             for (int s=0;s<model.getNrSlotsPerDay();s++) {
                 int slot = (s+sx) % model.getNrSlotsPerDay();
-                if (curricula.getConstraint().getPlacement(day, slot)!=null) continue;
-                CttPlacement prev = (slot==0?null:curricula.getConstraint().getPlacement(day, slot-1));
-                CttPlacement next = (slot+1==model.getNrSlotsPerDay()?null:curricula.getConstraint().getPlacement(day, slot+1));
+                if (curricula.getConstraint().getPlacement(assignment, day, slot)!=null) continue;
+                CttPlacement prev = (slot==0?null:curricula.getConstraint().getPlacement(assignment, day, slot-1));
+                CttPlacement next = (slot+1==model.getNrSlotsPerDay()?null:curricula.getConstraint().getPlacement(assignment, day, slot+1));
                 if ((next==null || next.equals(placement)) && (prev==null || prev.equals(placement))) continue;
-                Neighbour<CttLecture, CttPlacement> n = findNeighbour((CttLecture)placement.variable(), compactPenalty, day, slot, placement.getRoom());
+                Neighbour<CttLecture, CttPlacement> n = findNeighbour(assignment, (CttLecture)placement.variable(), compactPenalty, day, slot, placement.getRoom());
                 if (n!=null) return n;
             }
         }
         return null;
     }    
     
-    private Neighbour<CttLecture, CttPlacement> findNeighbour(CttLecture lecture, int compactPenalty, int day, int slot, CttRoom originalRoom) {
+    private Neighbour<CttLecture, CttPlacement> findNeighbour(Assignment<CttLecture, CttPlacement> assignment, CttLecture lecture, int compactPenalty, int day, int slot, CttRoom originalRoom) {
         if (!lecture.getCourse().isAvailable(day,slot)) return null;
-        if (lecture.getCourse().getTeacher().getConstraint().getPlacement(day,slot)!=null) return null;
+        if (lecture.getCourse().getTeacher().getConstraint().getPlacement(assignment, day,slot)!=null) return null;
         for (CttCurricula curricula: lecture.getCourse().getCurriculas()) {
-            if (curricula.getConstraint().getPlacement(day,slot)!=null) return null;
+            if (curricula.getConstraint().getPlacement(assignment, day,slot)!=null) return null;
         }
-        if ((CttPlacement)originalRoom.getConstraint().getPlacement(day, slot)==null) {
+        if ((CttPlacement)originalRoom.getConstraint().getPlacement(assignment, day, slot)==null) {
             CttPlacement newPlacement = new CttPlacement(lecture, originalRoom, day, slot);
-            int compactPenaltyChange = newPlacement.getCompactPenalty() - compactPenalty;
-            ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, newPlacement);
-            if ((!iHC || n.value()<=0) && compactPenaltyChange<0) return n;
+            int compactPenaltyChange = newPlacement.getCompactPenalty(assignment) - compactPenalty;
+            ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(assignment, lecture, newPlacement);
+            if ((!iHC || n.value(assignment)<=0) && compactPenaltyChange<0) return n;
         }
         int rx = ToolBox.random(lecture.getCourse().getModel().getRooms().size());
         for (int r=0;r<lecture.getCourse().getModel().getRooms().size();r++) {
             CttRoom room = lecture.getCourse().getModel().getRooms().get((r+rx)%lecture.getCourse().getModel().getRooms().size());
             if (room.getSize()<lecture.getCourse().getNrStudents()) continue;
-            if ((CttPlacement)room.getConstraint().getPlacement(day, slot)==null) {
+            if ((CttPlacement)room.getConstraint().getPlacement(assignment, day, slot)==null) {
                 CttPlacement newPlacement = new CttPlacement(lecture, room, day, slot);
-                int compactPenaltyChange = newPlacement.getCompactPenalty() - compactPenalty;
-                ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, newPlacement);
-                if (iHC && n.value()>0) continue;
+                int compactPenaltyChange = newPlacement.getCompactPenalty(assignment) - compactPenalty;
+                ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(assignment, lecture, newPlacement);
+                if (iHC && n.value(assignment)>0) continue;
                 if (compactPenaltyChange<0) return n;
             }
         }

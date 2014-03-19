@@ -1,7 +1,8 @@
 package net.sf.cpsolver.itc.tim.heuristics;
 
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
 import net.sf.cpsolver.itc.heuristics.ItcParameterWeightOscillation;
 import net.sf.cpsolver.itc.tim.model.TimLocation;
 import net.sf.cpsolver.itc.tim.model.TimEvent;
@@ -44,8 +45,8 @@ public class TimNoRoomWeightOscillation extends ItcParameterWeightOscillation<Ti
     }
     
     /** Current value of the parameter weight */
-    public double currentValue() {
-        return ((TimModel)getModel()).noRoomViolations(false);
+    public double currentValue(Assignment<TimEvent, TimLocation> assignment) {
+        return ((TimModel)getModel()).noRoomViolations(assignment, false);
     }
     /** Update parameter weight with the new value */
     public void changeWeight(double weight) {

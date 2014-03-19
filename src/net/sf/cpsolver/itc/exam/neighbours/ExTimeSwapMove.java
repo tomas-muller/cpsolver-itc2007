@@ -3,12 +3,13 @@ package net.sf.cpsolver.itc.exam.neighbours;
 
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.exam.model.ExExam;
 import net.sf.cpsolver.itc.exam.model.ExModel;
 import net.sf.cpsolver.itc.exam.model.ExPeriod;
@@ -47,8 +48,9 @@ public class ExTimeSwapMove implements NeighbourSelection<ExExam, ExPlacement> {
     /** Neighbour selection */
     public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
+        Assignment<ExExam, ExPlacement> assignment = solution.getAssignment();
         ExExam exam = (ExExam)ToolBox.random(model.variables());
-        ExPlacement placement = (ExPlacement)exam.getAssignment();
+        ExPlacement placement = assignment.getValue(exam);
         if (placement==null) return null;
         int px = ToolBox.random(model.getNrPeriods());
         for (int t=0;t<model.getNrPeriods();t++) {
@@ -56,9 +58,9 @@ public class ExTimeSwapMove implements NeighbourSelection<ExExam, ExPlacement> {
             ExPeriod period = model.getPeriod(periodIdx);
             if (exam.getLength()>period.getLength()) continue;
             ExPlacement p = new ExPlacement(exam, period, placement.getRoom());
-            Set<ExPlacement> conflicts = model.conflictValues(p);
+            Set<ExPlacement> conflicts = model.conflictValues(assignment, p);
             if (conflicts.size()==1) {
-                Neighbour<ExExam, ExPlacement> n = exam.findSwap(conflicts.iterator().next().variable());
+                Neighbour<ExExam, ExPlacement> n = exam.findSwap(assignment, conflicts.iterator().next().variable());
                 if (n!=null) return n;
             }
         }

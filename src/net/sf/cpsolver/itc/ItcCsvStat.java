@@ -4,9 +4,9 @@ import java.io.File;
 import java.text.DecimalFormat;
 import java.util.Iterator;
 
-import net.sf.cpsolver.ifs.util.CSVFile;
-import net.sf.cpsolver.ifs.util.CSVFile.CSVField;
-import net.sf.cpsolver.ifs.util.CSVFile.CSVLine;
+import org.cpsolver.ifs.util.CSVFile;
+import org.cpsolver.ifs.util.CSVFile.CSVField;
+import org.cpsolver.ifs.util.CSVFile.CSVLine;
 
 /**
  * Process given CSV file (or files, one per each problem), output the best achieved solution.
@@ -33,7 +33,7 @@ import net.sf.cpsolver.ifs.util.CSVFile.CSVLine;
  */
 public class ItcCsvStat {
     private int iCnt = 0;
-    private double iMin, iMax, iSum, iSum2;
+    private double iMin, iMax, iSum;
     private String iName;
     private int iMinLine;
     protected static DecimalFormat sDF3 = new DecimalFormat("0.000");
@@ -52,13 +52,12 @@ public class ItcCsvStat {
         if (iCnt==0) {
             iMinLine = 0;
             iMin = iMax = val;
-            iSum = val; iSum2 = val*val;
+            iSum = val;
         } else {
             if (val<iMin) iMinLine = iCnt;
             iMin = Math.min(iMin, val);
             iMax = Math.max(iMax, val);
             iSum += val;
-            iSum2 += val*val;
         }
         iCnt++;
     }

@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.ctt.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.ctt.model.CttCurricula;
 import net.sf.cpsolver.itc.ctt.model.CttLecture;
 import net.sf.cpsolver.itc.ctt.model.CttModel;
@@ -52,8 +53,9 @@ public class CttSwapMove implements NeighbourSelection<CttLecture, CttPlacement>
     /** Neighbour selection */
     public Neighbour<CttLecture, CttPlacement> selectNeighbour(Solution<CttLecture, CttPlacement> solution) {
         CttModel model = (CttModel)solution.getModel();
+        Assignment<CttLecture, CttPlacement> assignment = solution.getAssignment();
         CttLecture lecture = (CttLecture)ToolBox.random(model.variables());
-        CttPlacement placement = (CttPlacement)lecture.getAssignment();
+        CttPlacement placement = assignment.getValue(lecture);
         if (placement==null) return null;
         int dx = ToolBox.random(model.getNrDays());
         int sx = ToolBox.random(model.getNrSlotsPerDay());
@@ -66,40 +68,40 @@ public class CttSwapMove implements NeighbourSelection<CttLecture, CttPlacement>
                 Boolean inConflict = null;
                 room: for (int r=0;r<model.getRooms().size();r++) {
                     CttRoom room = model.getRooms().get((r+rx)%model.getRooms().size());
-                    CttPlacement conflict = (CttPlacement)room.getConstraint().getPlacement(day, slot);
+                    CttPlacement conflict = (CttPlacement)room.getConstraint().getPlacement(assignment, day, slot);
                     if (conflict==null) {
                         if (inConflict==null) {
-                            if (lecture.getCourse().getTeacher().getConstraint().getPlacement(day,slot)!=null) {
+                            if (lecture.getCourse().getTeacher().getConstraint().getPlacement(assignment, day,slot)!=null) {
                                 inConflict=Boolean.TRUE;
                                 continue room;
                             }
                             for (CttCurricula curricula: lecture.getCourse().getCurriculas()) {
-                                if (curricula.getConstraint().getPlacement(day,slot)!=null) {
+                                if (curricula.getConstraint().getPlacement(assignment, day,slot)!=null) {
                                     inConflict=Boolean.TRUE;
                                     continue room;
                                 }
                             }
                             inConflict=Boolean.FALSE;
                         } else if (inConflict.booleanValue()) continue room;
-                        Neighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, new CttPlacement(lecture, room, day, slot));
-                        if (!iHC || n.value()<=0) return n;
+                        Neighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(assignment, lecture, new CttPlacement(lecture, room, day, slot));
+                        if (!iHC || n.value(assignment)<=0) return n;
                     } else {
                         CttLecture confLect = (CttLecture)conflict.variable();
                         if (lecture.getCourse().equals(confLect.getCourse())) continue;
                         if (!confLect.getCourse().isAvailable(placement.getDay(), placement.getSlot())) continue;
                         if (!confLect.getCourse().getTeacher().equals(lecture.getCourse().getTeacher())) {
-                            if (confLect.getCourse().getTeacher().getConstraint().getPlacement(placement.getDay(), placement.getSlot())!=null) continue;
-                            if (lecture.getCourse().getTeacher().getConstraint().getPlacement(day,slot)!=null) continue;
+                            if (confLect.getCourse().getTeacher().getConstraint().getPlacement(assignment, placement.getDay(), placement.getSlot())!=null) continue;
+                            if (lecture.getCourse().getTeacher().getConstraint().getPlacement(assignment, day,slot)!=null) continue;
                         }
                         for (CttCurricula curricula: lecture.getCourse().getCurriculas()) {
-                            CttPlacement conf = curricula.getConstraint().getPlacement(day,slot);
+                            CttPlacement conf = curricula.getConstraint().getPlacement(assignment, day,slot);
                             if (conf!=null && !conf.variable().equals(confLect)) continue room;
                         }
                         for (CttCurricula curricula: confLect.getCourse().getCurriculas()) {
-                            CttPlacement conf = curricula.getConstraint().getPlacement(placement.getDay(), placement.getSlot());
+                            CttPlacement conf = curricula.getConstraint().getPlacement(assignment, placement.getDay(), placement.getSlot());
                             if (conf!=null && !conf.variable().equals(lecture)) continue room;
                         }
-                        return new ItcLazySwap<CttLecture, CttPlacement>(
+                        return new ItcLazySwap<CttLecture, CttPlacement>(assignment,
                                 new CttPlacement(lecture, room, day, slot),
                                 new CttPlacement(confLect, placement.getRoom(), placement.getDay(), placement.getSlot()));
                     }
@@ -108,18 +110,18 @@ public class CttSwapMove implements NeighbourSelection<CttLecture, CttPlacement>
         return null;
     }
     
-    public ItcSwap<CttLecture, CttPlacement> makeSwap(CttLecture l1, CttLecture l2, CttPlacement p1, CttPlacement p2, CttPlacement np1, CttPlacement np2) {
+    public ItcSwap<CttLecture, CttPlacement> makeSwap(Assignment<CttLecture, CttPlacement> assignment, CttLecture l1, CttLecture l2, CttPlacement p1, CttPlacement p2, CttPlacement np1, CttPlacement np2) {
         double value = 0;
         value += np1.getRoomCapPenalty() + np2.getRoomCapPenalty() - p1.getRoomCapPenalty() - p2.getRoomCapPenalty();
-        value += np1.getMinDaysPenalty() + np2.getMinDaysPenalty() - p1.getMinDaysPenalty() - p2.getMinDaysPenalty();
-        value += np1.getRoomPenalty() + np2.getRoomPenalty() - p1.getRoomPenalty() - p2.getRoomPenalty();
+        value += np1.getMinDaysPenalty(assignment) + np2.getMinDaysPenalty(assignment) - p1.getMinDaysPenalty(assignment) - p2.getMinDaysPenalty(assignment);
+        value += np1.getRoomPenalty(assignment) + np2.getRoomPenalty(assignment) - p1.getRoomPenalty(assignment) - p2.getRoomPenalty(assignment);
         for (CttCurricula curricula: l1.getCourse().getCurriculas()) {
             if (l2.getCourse().getCurriculas().contains(curricula)) continue;
-            value += curricula.getCompactPenalty(np1) - curricula.getCompactPenalty(p1);
+            value += curricula.getCompactPenalty(assignment, np1) - curricula.getCompactPenalty(assignment, p1);
         }
         for (CttCurricula curricula: l2.getCourse().getCurriculas()) {
             if (l1.getCourse().getCurriculas().contains(curricula)) continue;
-            value += curricula.getCompactPenalty(np2) - curricula.getCompactPenalty(p2);
+            value += curricula.getCompactPenalty(assignment, np2) - curricula.getCompactPenalty(assignment, p2);
         }
         return new ItcSwap<CttLecture, CttPlacement>(np1, np2, value);
     }

@@ -19,8 +19,10 @@ import java.util.TreeSet;
 
 import org.apache.log4j.Logger;
 
-import net.sf.cpsolver.ifs.model.BinaryConstraint;
-import net.sf.cpsolver.ifs.model.Constraint;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.model.BinaryConstraint;
+import org.cpsolver.ifs.model.Constraint;
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -57,21 +59,12 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
     private List<BinaryConstraint<ExExam, ExPlacement>> iBinaryConstraints = new ArrayList<BinaryConstraint<ExExam,ExPlacement>>();
     private int iFronLoadThreshold = 0;
     
-    private int iFronLoadPenalty = 0, iPeriodPenalty = 0, iRoomPenalty = 0;
-    private int iTwoInARowPenalty = 0, iTwoInADayPenalty = 0, iWiderSpreadPenalty = 0;
-    private int iMixedDurationsPenalty = 0;
-    
     private int iBinaryViolationWeight = 5000;
     private int iDirectConflictWeight = 1000;
-    
-    private int iBinaryViolations = 0, iNrDirectConflicts = 0;
     
     /** Constructor */
     public ExModel() {
         super();
-        iAssignedVariables = null;
-        iUnassignedVariables = null;
-        iPerturbVariables = null;
     }
     
     /** List of periods
@@ -270,13 +263,6 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
             }
         }
         
-        for (Constraint<ExExam, ExPlacement> c: constraints()) {
-            if (c instanceof ExRoom)
-                ((ExRoom)c).init();
-            if (c instanceof ExStudent)
-                ((ExStudent)c).init();
-        }
-        
         for (ExExam exam: variables()) {
             exam.init();
             for (Constraint<ExExam, ExPlacement> c: exam.constraints()) {
@@ -321,12 +307,12 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * Count the number of occurrences where two examinations are taken by students straight after one another i.e. back to back. Once this has been established, the number of students involved in each occurance should be added and multiplied by the number provided in the �two in a row' weighting within the �Institutional Model Index'.  Note that two exams in a row are not counted overnight e.g. if a student has an exam the last period of one day and another the first period the next day, this does not count as two in a row.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getTwoInARow(boolean precise) {
-        if (!precise) return iTwoInARow*iTwoInARowPenalty;
+    public int getTwoInARow(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return iTwoInARow * getPenalties(assignment).getTwoInARowPenalty();
         if (iTwoInARow==0) return 0;
         int penalty = 0;
         for (ExStudent student: iStudents)
-            penalty += student.getTwoInARow();
+            penalty += student.getTwoInARow(assignment);
         return iTwoInARow*penalty;
     }
 
@@ -335,12 +321,12 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * In the case where there are three periods or more in a day, count the number of occurrences of students having two exams in a day which are not directly adjacent, i.e. not back to back, and multiply this by the ' two in a day' weighting provided within the 'Institutional Model Index'. Therefore, two exams in a day are considered as those which are not adjacent i.e. they have a free period between them. This is done to ensure a particular exam placing within a solution does not contribute twice to the overall penalty. For example if Exam A and Exam B were in adjacent periods in the same day the penalty would be counted as part of the 'Two exams in a row penalty'.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getTwoInADay(boolean precise) {
-        if (!precise) return iTwoInADay*iTwoInADayPenalty;
+    public int getTwoInADay(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return iTwoInADay * getPenalties(assignment).getTwoInADayPenalty();
         if (iTwoInADay==0) return 0;
         int penalty = 0;
         for (ExStudent student: iStudents)
-            penalty += student.getTwoInADay();
+            penalty += student.getTwoInADay(assignment);
         return iTwoInADay*penalty;
     }
     
@@ -349,11 +335,11 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * This constraint allows an organisation to 'spread' an individual's examinations over a specified number of periods. This can be thought of an extension of the two constraints previously described.  Within the �Institutional Model Index', a figure is provided relating to how many periods the solution should be �optimised' over. The higher this figure, potentially the better the spread of examinations for individual students. In many institutions constructing solutions while changing this setting has led to timetables which the Institution is much more satisfied with.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getWiderSpread(boolean precise) {
-        if (!precise) return iWiderSpreadPenalty;
+    public int getWiderSpread(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getWiderSpreadPenalty();
         int penalty = 0;
         for (ExStudent student: iStudents)
-            penalty += student.getWiderSpread(iPeriodSpread);
+            penalty += student.getWiderSpread(assignment, iPeriodSpread);
         return penalty;
     }
     
@@ -363,11 +349,11 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      *  For Each Period, For Each Room, Penalty = (number of different durations -1 ) * 'NONMIXEDDURATIONS' weighting.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getMixedDurations(boolean precise) {
-        if (!precise) return iNonMixedDurations*iMixedDurationsPenalty;
+    public int getMixedDurations(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return iNonMixedDurations * getPenalties(assignment).getMixedDurationsPenalty();
         int penalty = 0;
         for (ExRoom room: iRooms)
-            penalty += room.getMixedDurations();
+            penalty += room.getMixedDurations(assignment);
         return iNonMixedDurations*penalty;
     }
     
@@ -376,11 +362,11 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * It is often the case that organisations want to keep certain room usage to a minimum. As with the 'Mixed Durations' component of the overall penalty, this part of the overall penalty should be calculated on a period by period basis. For each period, if a room used within the solution has an associated penalty, the penalty for that room for that period is calculated by multiplying the associated penalty by the number of times the room is used.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getRoomPenalty(boolean precise) {
-        if (!precise) return iRoomPenalty;
+    public int getRoomPenalty(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getRoomPenalty();
         int penalty = 0;
         for (ExRoom room: iRooms)
-            penalty += room.getRoomPenalty();
+            penalty += room.getRoomPenalty(assignment);
         return penalty;
     }
     
@@ -439,11 +425,11 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * It is often the case that organisations want to keep certain period usage to a minimum. As with the 'Mixed Durations' and the 'Room Penalty' components of the overall penalty, this part of the overall penalty should be calculated on a period by period basis. For each period the penalty is calculated by multiplying the associated penalty by the number of times the exams timetabled within that period.
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getPeriodPenalty(boolean precise) {
-        if (!precise) return iPeriodPenalty;
+    public int getPeriodPenalty(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getPeriodPenalty();
         int penalty = 0;
-        for (ExExam x: assignedVariables())
-            penalty += x.getAssignment().getPeriodPenalty();
+        for (ExPlacement x: assignment.assignedValues())
+            penalty += x.getPeriodPenalty();
         return penalty;
     }
 
@@ -455,11 +441,11 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * <br>Third parameter= the penalty or weighting 
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getFrontLoadPenalty(boolean precise) {
-        if (!precise) return iFrontLoad[2]*iFronLoadPenalty;
+    public int getFrontLoadPenalty(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return iFrontLoad[2] * getPenalties(assignment).getFronLoadPenalty();
         int penalty = 0;
         for (ExExam exam: iLargestExams) {
-            ExPlacement p = exam.getAssignment();
+            ExPlacement p = assignment.getValue(exam);
             if (p==null) continue;
             if (p.getPeriodIndex()>=getFronLoadThreshold()) penalty++;
         }
@@ -469,11 +455,11 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
     /**
      * Save solution into a given file (see <a href='http://www.cs.qub.ac.uk/itc2007/examtrack/exam_track_index_files/outputformat.htm'>Output Format</a> for more details).
      */
-    public boolean save(File file) throws Exception {
+    public boolean save(Assignment<ExExam, ExPlacement> assignment, File file) throws Exception {
         PrintWriter out = new PrintWriter(new FileWriter(file));
         
         for (ExExam exam: variables()) {
-            ExPlacement placement = (ExPlacement)exam.getAssignment();
+            ExPlacement placement = (ExPlacement)assignment.getValue(exam);
             out.print(placement==null?"-1, -1":placement.getPeriod().getIndex()+", "+placement.getRoom().getId()+"\r\n");
         }
         
@@ -482,7 +468,7 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
 
         if ("true".equals(System.getProperty("report"))) {
             out = new PrintWriter(new FileWriter(new File(file.getParentFile(),file.getName().substring(0,file.getName().lastIndexOf('.'))+".txt")));
-            report(out);
+            report(assignment, out);
             out.flush(); out.close();
         }
 
@@ -493,13 +479,14 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * Weighted number of binary constraint violations
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getBinaryViolations(boolean precise) {
-        if (!precise) return iBinaryViolations;
+    public int getBinaryViolations(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getBinaryViolations();
         int violations = 0;
         for (BinaryConstraint<ExExam, ExPlacement> bc: iBinaryConstraints) {
             if (bc.isHard()) continue;
-            if (bc.first().getAssignment()!=null && bc.second().getAssignment()!=null && 
-                    !bc.isConsistent(bc.first().getAssignment(), bc.second().getAssignment())) violations++;
+            ExPlacement a = assignment.getValue(bc.first());
+            ExPlacement b = assignment.getValue(bc.second());
+            if (a != null && b != null && !bc.isConsistent(a, b)) violations++;
         }
         return violations;
     }
@@ -508,36 +495,36 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * Weighted number of direct student conflicts 
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public int getNrDirectConflicts(boolean precise) {
-        if (!precise) return iNrDirectConflicts;
+    public int getNrDirectConflicts(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
+        if (!precise) return getPenalties(assignment).getNrDirectConflicts();
         int conflicts = 0;
         for (ExStudent student: iStudents)
-            conflicts += student.getNrDirectConflicts();
+            conflicts += student.getNrDirectConflicts(assignment);
         return conflicts;
     }
 
     /**
      * Total solution value (weighted sum of all criteria)
      */
-    public double getTotalValue() {
-        return getTotalValue(false);
+    public double getTotalValue(Assignment<ExExam, ExPlacement> assignment) {
+        return getTotalValue(assignment, false);
     }
     
     /**
      * Total solution value (weighted sum of all criteria)
      * @param precise true -- precise computation, false -- use inner counter (for speed up)
      */
-    public double getTotalValue(boolean precise) {
+    public double getTotalValue(Assignment<ExExam, ExPlacement> assignment, boolean precise) {
         return
-            getTwoInARow(precise)+
-            getTwoInADay(precise)+
-            getWiderSpread(precise)+
-            getMixedDurations(precise)+
-            getFrontLoadPenalty(precise)+
-            getRoomPenalty(precise)+
-            getPeriodPenalty(precise)+
-            getBinaryViolationWeight()*getBinaryViolations(precise)+
-            getDirectConflictWeight()*getNrDirectConflicts(precise);
+            getTwoInARow(assignment, precise)+
+            getTwoInADay(assignment, precise)+
+            getWiderSpread(assignment, precise)+
+            getMixedDurations(assignment, precise)+
+            getFrontLoadPenalty(assignment, precise)+
+            getRoomPenalty(assignment, precise)+
+            getPeriodPenalty(assignment, precise)+
+            getBinaryViolationWeight()*getBinaryViolations(assignment, precise)+
+            getDirectConflictWeight()*getNrDirectConflicts(assignment, precise);
     }
     
 
@@ -569,98 +556,80 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
      * room penalty, and
      * period penalty
      */
-    public String csvLine() { 
+    public String csvLine(Assignment<ExExam, ExPlacement> assignment) { 
         return 
-            getBinaryViolations(false)+(getBinaryViolations(false)>0 && getBinaryViolationWeight()!=5000?"/"+getBinaryViolationWeight():"")+","+
-            getNrDirectConflicts(false)+(getNrDirectConflicts(false)>0 && getDirectConflictWeight()!=5000?"/"+getDirectConflictWeight():"")+","+
-            getTwoInARow(false)+","+
-            getTwoInADay(false)+","+
-            getWiderSpread(false)+","+
-            getMixedDurations(false)+","+
-            getFrontLoadPenalty(false)+","+
-            getRoomPenalty(false)+","+
-            getPeriodPenalty(false);
+            getBinaryViolations(assignment, false)+(getBinaryViolations(assignment, false)>0 && getBinaryViolationWeight()!=5000?"/"+getBinaryViolationWeight():"")+","+
+            getNrDirectConflicts(assignment, false)+(getNrDirectConflicts(assignment, false)>0 && getDirectConflictWeight()!=5000?"/"+getDirectConflictWeight():"")+","+
+            getTwoInARow(assignment, false)+","+
+            getTwoInADay(assignment, false)+","+
+            getWiderSpread(assignment, false)+","+
+            getMixedDurations(assignment, false)+","+
+            getFrontLoadPenalty(assignment, false)+","+
+            getRoomPenalty(assignment, false)+","+
+            getPeriodPenalty(assignment, false);
     }
     
     /**
      * Solution info -- values of problem specific parameters
      */
-    public Map<String, String> getInfo() {
-    	Map<String, String> info = super.getInfo();
-        info.put("Two Exams in a Row",String.valueOf(getTwoInARow(false)));
-        info.put("Two Exams in a Day",String.valueOf(getTwoInADay(false)));
-        info.put("Wider/Period Spread",String.valueOf(getWiderSpread(false)));
-        info.put("Mixed Durations",String.valueOf(getMixedDurations(false)));
-        info.put("Larger Exams Constraints",String.valueOf(getFrontLoadPenalty(false)));
-        info.put("Room Penalty",String.valueOf(getRoomPenalty(false)));
-        info.put("Period Penalty",String.valueOf(getPeriodPenalty(false)));
-        info.put("Binary Violations",String.valueOf(getBinaryViolations(false)));
-        info.put("Direct Conflicts",String.valueOf(getNrDirectConflicts(false)));
+    public Map<String, String> getInfo(Assignment<ExExam, ExPlacement> assignment) {
+    	Map<String, String> info = super.getInfo(assignment);
+        info.put("Two Exams in a Row",String.valueOf(getTwoInARow(assignment, false)));
+        info.put("Two Exams in a Day",String.valueOf(getTwoInADay(assignment, false)));
+        info.put("Wider/Period Spread",String.valueOf(getWiderSpread(assignment, false)));
+        info.put("Mixed Durations",String.valueOf(getMixedDurations(assignment, false)));
+        info.put("Larger Exams Constraints",String.valueOf(getFrontLoadPenalty(assignment, false)));
+        info.put("Room Penalty",String.valueOf(getRoomPenalty(assignment, false)));
+        info.put("Period Penalty",String.valueOf(getPeriodPenalty(assignment, false)));
+        info.put("Binary Violations",String.valueOf(getBinaryViolations(assignment, false)));
+        info.put("Direct Conflicts",String.valueOf(getNrDirectConflicts(assignment, false)));
         return info;
     }
     
     /**
      * Extended solution info -- values of problem specific parameters (precisely computed)
      */
-    public Map<String, String> getExtendedInfo() {
-    	Map<String, String> info = super.getExtendedInfo();
-        info.put("Two Exams in a Row [p]",String.valueOf(getTwoInARow(true)));
-        info.put("Two Exams in a Day [p]",String.valueOf(getTwoInADay(true)));
-        info.put("Wider/Period Spread [p]",String.valueOf(getWiderSpread(true)));
-        info.put("Mixed Durations [p]",String.valueOf(getMixedDurations(true)));
-        info.put("Larger Exams Constraints [p]",String.valueOf(getFrontLoadPenalty(true)));
-        info.put("Room Penalty [p]",String.valueOf(getRoomPenalty(true)));
-        info.put("Period Penalty [p]",String.valueOf(getPeriodPenalty(true)));
-        info.put("Binary Violations [p]",String.valueOf(getBinaryViolations(true)));
-        info.put("Direct Conflicts [p]",String.valueOf(getNrDirectConflicts(true)));
+    public Map<String, String> getExtendedInfo(Assignment<ExExam, ExPlacement> assignment) {
+    	Map<String, String> info = super.getExtendedInfo(assignment);
+        info.put("Two Exams in a Row [p]",String.valueOf(getTwoInARow(assignment, true)));
+        info.put("Two Exams in a Day [p]",String.valueOf(getTwoInADay(assignment, true)));
+        info.put("Wider/Period Spread [p]",String.valueOf(getWiderSpread(assignment, true)));
+        info.put("Mixed Durations [p]",String.valueOf(getMixedDurations(assignment, true)));
+        info.put("Larger Exams Constraints [p]",String.valueOf(getFrontLoadPenalty(assignment, true)));
+        info.put("Room Penalty [p]",String.valueOf(getRoomPenalty(assignment, true)));
+        info.put("Period Penalty [p]",String.valueOf(getPeriodPenalty(assignment, true)));
+        info.put("Binary Violations [p]",String.valueOf(getBinaryViolations(assignment, true)));
+        info.put("Direct Conflicts [p]",String.valueOf(getNrDirectConflicts(assignment, true)));
         return info;
     }
 
     /**
      * Update counters on unassignment of an exam
      */
-    public void beforeUnassigned(long iteration, ExPlacement placement) {
-        super.beforeUnassigned(iteration, placement);
+    public void beforeUnassigned(Assignment<ExExam, ExPlacement> assignment, long iteration, ExPlacement placement) {
+        super.beforeUnassigned(assignment, iteration, placement);
         ExExam exam = placement.variable();
-        iFronLoadPenalty-=placement.frontLoadPenalty();
-        iPeriodPenalty-=placement.getPeriodPenalty();
-        iRoomPenalty-=placement.getRoom().getPenalty();
-        iTwoInARowPenalty-=placement.twoInARowPenalty();
-        iTwoInADayPenalty-=placement.twoInADayPenalty();
-        iWiderSpreadPenalty-=placement.widerSpreadPenalty();
-        iMixedDurationsPenalty-=placement.mixedDurationsPenalty();
-        iBinaryViolations-=placement.nrBinaryViolations();
-        iNrDirectConflicts-=placement.nrDirectConflicts();
         for (ExStudent s: exam.getStudents())
-            s.afterUnassigned(iteration, placement);
-        placement.getRoom().afterUnassigned(iteration, placement);
+            s.afterUnassigned(assignment, iteration, placement);
+        placement.getRoom().afterUnassigned(assignment, iteration, placement);
     }
     
     /**
      * Update counters on assignment of an exam
      */
-    public void afterAssigned(long iteration, ExPlacement placement) {
-        super.afterAssigned(iteration, placement);
+    public void afterAssigned(Assignment<ExExam, ExPlacement> assignment, long iteration, ExPlacement placement) {
+        super.afterAssigned(assignment, iteration, placement);
         ExExam exam = placement.variable();
-        iFronLoadPenalty+=placement.frontLoadPenalty();
-        iPeriodPenalty+=placement.getPeriodPenalty();
-        iRoomPenalty+=placement.getRoom().getPenalty();
-        iTwoInARowPenalty+=placement.twoInARowPenalty();
-        iTwoInADayPenalty+=placement.twoInADayPenalty();
-        iWiderSpreadPenalty+=placement.widerSpreadPenalty();
-        iMixedDurationsPenalty+=placement.mixedDurationsPenalty();
-        iBinaryViolations+=placement.nrBinaryViolations();
-        iNrDirectConflicts+=placement.nrDirectConflicts();
         for (ExStudent s: exam.getStudents())
-        	s.afterAssigned(iteration, placement);
-        placement.getRoom().afterAssigned(iteration, placement);
+        	s.afterAssigned(assignment, iteration, placement);
+        placement.getRoom().afterAssigned(assignment, iteration, placement);
     }
     
     /**
      * Report violations of all soft constraints (optimization criteria)
      * @param out output writer to print violations
      */
-    public void report(PrintWriter out) {
+    public void report(Assignment<ExExam, ExPlacement> assignment, PrintWriter out) {
         List<ExExam> orderedExams = new ArrayList<ExExam>(variables());
         Collections.sort(orderedExams, new Comparator<ExExam>() {
             public int compare(ExExam e1, ExExam e2) {
@@ -674,7 +643,7 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
         int roomPenaltyCnt = 0, roomPenalty = 0, periodPenaltyCnt = 0, periodPenalty = 0, twoInRow = 0, 
             twoInDay = 0, twoInRowCnt = 0, twoInDayCnt = 0, widerSpreadCnt = 0, widerSpread = 0, frontLoad = 0; 
         for (ExExam exam: variables()) {
-            ExPlacement placement = (ExPlacement)exam.getAssignment();
+            ExPlacement placement = (ExPlacement)assignment.getValue(exam);
             if (placement==null) {
                 out.println("Exam "+exam.getId()+": not scheduled");
             } else {
@@ -696,13 +665,13 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
                 int twoInRowThisExam = 0, twoInDayThisExam = 0, widerSpreadThisExam = 0;
                 for (ExStudent s: exam.getStudents()) {
                     for (ExPeriod p=firstPeriod(); p!=null; p=p.next()) {
-                        if (!s.hasExam(p)) continue;
+                        if (!s.hasExam(assignment, p)) continue;
                         if (p.getIndex()<=placement.getPeriod().getIndex()) continue;
                         int dist = Math.abs(p.getIndex()-placement.getPeriodIndex());
                         if (p.getDay()==placement.getPeriod().getDay()) {
                             boolean adj = (p.getIndex()+1==placement.getPeriod().getIndex() || p.getIndex()-1==placement.getPeriod().getIndex());
                             if (adj) twoInRowThisExam++; else twoInDayThisExam++;
-                            out.println("Exam "+exam.getId()+":   -- student "+s.getId()+" has another exam "+p+" (Exam "+s.getExamStr(p)+", "+(adj?"in a row":"in a day")+", distance "+dist+")");
+                            out.println("Exam "+exam.getId()+":   -- student "+s.getId()+" has another exam "+p+" (Exam "+s.getExamStr(assignment, p)+", "+(adj?"in a row":"in a day")+", distance "+dist+")");
                             /*
                             for (Enumeration g=getPeriods().getPeriods().elements();g.hasMoreElements();) {
                                 ExPeriods.Period px = (ExPeriods.Period)g.nextElement();
@@ -713,7 +682,7 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
                             */
                         }
                         if (dist>0 && dist<=iPeriodSpread) {
-                            out.println("Exam "+exam.getId()+":   -- student "+s.getId()+" has another exam "+p+" (Exam "+s.getExamStr(p)+", distance "+dist+")");
+                            out.println("Exam "+exam.getId()+":   -- student "+s.getId()+" has another exam "+p+" (Exam "+s.getExamStr(assignment, p)+", distance "+dist+")");
                             /*
                             for (Enumeration g=getPeriods().getPeriods().elements();g.hasMoreElements();) {
                                 ExPeriods.Period px = (ExPeriods.Period)g.nextElement();
@@ -748,7 +717,7 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
             for (ExPeriod p=firstPeriod(); p!=null; p=p.next()) {
                 Set<Integer> durations = new HashSet<Integer>();
                 StringBuffer sb = new StringBuffer();
-                for (Iterator<ExPlacement> i=room.getExams(p).iterator(); i.hasNext(); ) {
+                for (Iterator<ExPlacement> i=room.getExams(assignment, p).iterator(); i.hasNext(); ) {
                     ExPlacement placement = i.next();
                     ExExam exam = placement.variable();
                     durations.add(new Integer(exam.getLength()));
@@ -787,4 +756,66 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
         setBinaryViolationWeight(5000);
         setDirectConflictWeight(5000);
     }
+    
+    public class Context implements AssignmentConstraintContext<ExExam, ExPlacement> {
+        private int iFronLoadPenalty = 0, iPeriodPenalty = 0, iRoomPenalty = 0;
+        private int iTwoInARowPenalty = 0, iTwoInADayPenalty = 0, iWiderSpreadPenalty = 0;
+        private int iMixedDurationsPenalty = 0;
+        private int iBinaryViolations = 0, iNrDirectConflicts = 0;
+        
+    	public Context(Assignment<ExExam, ExPlacement> assignment) {
+    		for (ExPlacement value: assignment.assignedValues())
+    			assigned(assignment, value);
+    	}
+
+		@Override
+		public void assigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement placement) {
+	        iFronLoadPenalty+=placement.frontLoadPenalty();
+	        iPeriodPenalty+=placement.getPeriodPenalty();
+	        iRoomPenalty+=placement.getRoom().getPenalty();
+	        iTwoInARowPenalty+=placement.twoInARowPenalty(assignment);
+	        iTwoInADayPenalty+=placement.twoInADayPenalty(assignment);
+	        iWiderSpreadPenalty+=placement.widerSpreadPenalty(assignment);
+	        iMixedDurationsPenalty+=placement.mixedDurationsPenalty(assignment);
+	        iBinaryViolations+=placement.nrBinaryViolations(assignment);
+	        iNrDirectConflicts+=placement.nrDirectConflicts(assignment);
+		}
+
+		@Override
+		public void unassigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement placement) {
+	        iFronLoadPenalty-=placement.frontLoadPenalty();
+	        iPeriodPenalty-=placement.getPeriodPenalty();
+	        iRoomPenalty-=placement.getRoom().getPenalty();
+	        iTwoInARowPenalty-=placement.twoInARowPenalty(assignment);
+	        iTwoInADayPenalty-=placement.twoInADayPenalty(assignment);
+	        iWiderSpreadPenalty-=placement.widerSpreadPenalty(assignment);
+	        iMixedDurationsPenalty-=placement.mixedDurationsPenalty(assignment);
+	        iBinaryViolations-=placement.nrBinaryViolations(assignment);
+	        iNrDirectConflicts-=placement.nrDirectConflicts(assignment);
+		}
+    	
+		public int getFronLoadPenalty() { return iFronLoadPenalty; }
+		public int getPeriodPenalty() { return iPeriodPenalty; }
+		public int getRoomPenalty() { return iRoomPenalty; }
+		public int getTwoInARowPenalty() { return iTwoInARowPenalty; }
+		public int getTwoInADayPenalty() { return iTwoInADayPenalty; }
+		public int getWiderSpreadPenalty() { return iWiderSpreadPenalty; }
+		public int getMixedDurationsPenalty() { return iMixedDurationsPenalty; }
+		public int getBinaryViolations() { return iBinaryViolations; }
+		public int getNrDirectConflicts() { return iNrDirectConflicts; }
+    }
+
+	@Override
+	public AssignmentConstraintContext<ExExam, ExPlacement> createAssignmentContext(Assignment<ExExam, ExPlacement> assignment) {
+		return new Context(assignment);
+	}
+	
+	public Context getPenalties(Assignment<ExExam, ExPlacement> assignment) {
+		return (Context)getContext(assignment);
+	}
+
+	@Override
+	public Assignment<ExExam, ExPlacement> createAssignment(int index, Assignment<ExExam, ExPlacement> assignment) {
+		return new ExAssignment(this, index, assignment);
+	}
 }

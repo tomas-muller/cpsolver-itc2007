@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.tim.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection;
@@ -54,8 +55,9 @@ public class TimSwapMove implements NeighbourSelection<TimEvent, TimLocation>, H
     /** Neighbour selection */
     public Neighbour<TimEvent, TimLocation> selectNeighbour(Solution<TimEvent, TimLocation> solution) {
         TTComp02Model model = (TTComp02Model)solution.getModel();
+        Assignment<TimEvent, TimLocation> assignment = solution.getAssignment();
         TimEvent event = model.variables().get(ToolBox.random(model.variables().size()));
-        TimLocation location = (TimLocation)event.getAssignment();
+        TimLocation location = assignment.getValue(event);
         if (location==null) return null;
         int tx = ToolBox.random(45);
         int rx = ToolBox.random(event.rooms().size());
@@ -65,32 +67,32 @@ public class TimSwapMove implements NeighbourSelection<TimEvent, TimLocation>, H
             Boolean inConflict = null;
             room: for (int r=0;r<event.rooms().size();r++) {
                 TimRoom room = event.rooms().get((r+rx)%event.rooms().size());
-                TimLocation conflict = (TimLocation)room.getLocation(time);
+                TimLocation conflict = (TimLocation)room.getLocation(assignment, time);
                 if (conflict==null) {
                     if (inConflict==null) {
                         for (TimStudent student: event.students()) {
-                            if (student.getLocation(time)!=null) {
+                            if (student.getLocation(assignment, time)!=null) {
                                 inConflict=Boolean.TRUE;
                                 continue room;
                             }
                         }
                         inConflict=Boolean.FALSE;
                     } else if (inConflict.booleanValue()) continue room;
-                    Neighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event, time, room));
-                    if (!iHC || n.value()<=0) return n;
+                    Neighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(assignment, event, new TimLocation(event, time, room));
+                    if (!iHC || n.value(assignment)<=0) return n;
                 } else {
                     TimEvent confEvt = (TimEvent)conflict.variable();
                     if (!confEvt.isAvailable(location.time())) continue;
                     if (!confEvt.rooms().contains(location.room())) continue;
                     for (TimStudent student: event.students()) {
-                        TimLocation conf = student.getLocation(time);
+                        TimLocation conf = student.getLocation(assignment, time);
                         if (conf!=null && !conf.variable().equals(confEvt)) return null;
                     }
                     for (TimStudent student: confEvt.students()) {
-                        TimLocation conf = student.getLocation(location.time());
+                        TimLocation conf = student.getLocation(assignment, location.time());
                         if (conf!=null && !conf.variable().equals(confEvt)) return null;
                     }
-                    return new ItcLazySwap<TimEvent, TimLocation>(
+                    return new ItcLazySwap<TimEvent, TimLocation>(assignment,
                             new TimLocation(event, time, room),
                             new TimLocation(confEvt, location.time(), location.room()));
                 }

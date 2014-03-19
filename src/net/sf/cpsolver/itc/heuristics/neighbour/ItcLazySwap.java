@@ -1,7 +1,11 @@
 package net.sf.cpsolver.itc.heuristics.neighbour;
 
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -35,27 +39,27 @@ public class ItcLazySwap<V extends Variable<V, T>, T extends Value<V, T>> extend
      * @param v1 first variable
      * @param v2 second variable
      */
-    public ItcLazySwap(T v1, T v2) {
+    public ItcLazySwap(Assignment<V, T> assignment, T v1, T v2) {
         iV1 = v1;
         iV2 = v2;
-        iOldV1 = v1.variable().getAssignment();
-        iOldV2 = v2.variable().getAssignment();
+        iOldV1 = assignment.getValue(v1.variable());
+        iOldV2 = assignment.getValue(v2.variable());
     }
     
     /** Perform swap */
-    protected void doAssign(long iteration) {
-        if (iOldV1!=null) iOldV1.variable().unassign(iteration);
-        if (iOldV2!=null) iOldV2.variable().unassign(iteration);
-        iV1.variable().assign(iteration, iV1);
-        iV2.variable().assign(iteration, iV2);
+    protected void doAssign(Assignment<V, T> assignment, long iteration) {
+    	iOldV1 = assignment.unassign(iteration, iV1.variable());
+    	iOldV2 = assignment.unassign(iteration, iV2.variable());
+    	assignment.assign(iteration, iV1);
+    	assignment.assign(iteration, iV2);
     }
     
     /** Undo the swap */
-    protected void undoAssign(long iteration) {
-        iV1.variable().unassign(iteration);
-        iV2.variable().unassign(iteration);
-        if (iOldV1!=null) iOldV1.variable().assign(iteration, iOldV1);
-        if (iOldV2!=null) iOldV2.variable().assign(iteration, iOldV2);
+    protected void undoAssign(Assignment<V, T> assignment, long iteration) {
+    	assignment.unassign(iteration, iV1.variable());
+    	assignment.unassign(iteration, iV2.variable());
+    	if (iOldV1 != null) assignment.assign(iteration, iOldV1);
+    	if (iOldV2 != null) assignment.assign(iteration, iOldV2);
     }
     /** Return problem model */
     public ItcModel<V,T> getModel() {
@@ -64,7 +68,15 @@ public class ItcLazySwap<V extends Variable<V, T>, T extends Value<V, T>> extend
     
     /** String representation */
     public String toString() {
-        return "Lazy "+iOldV1+" -> "+iV1+", "+iOldV2+" -> "+iV2;
+        return "Lazy " + iOldV1 + " -> " + iV1 + ", " + iOldV2 + " -> " + iV2;
     }
+
+	@Override
+	public Map<V, T> assignments() {
+		Map<V, T> ret = new HashMap<V, T>();
+		ret.put(iV1.variable(), iV1);
+		ret.put(iV2.variable(), iV2);
+		return ret;
+	}
 
 }

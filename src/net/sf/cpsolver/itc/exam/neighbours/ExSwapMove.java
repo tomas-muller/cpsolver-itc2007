@@ -3,12 +3,13 @@ package net.sf.cpsolver.itc.exam.neighbours;
 
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.exam.model.ExExam;
 import net.sf.cpsolver.itc.exam.model.ExModel;
 import net.sf.cpsolver.itc.exam.model.ExPeriod;
@@ -53,10 +54,11 @@ public class ExSwapMove implements NeighbourSelection<ExExam, ExPlacement>, Hill
     /** Neighbour selection */
     public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
+        Assignment<ExExam, ExPlacement> assignment = solution.getAssignment();
         ExExam exam = (ExExam)ToolBox.random(model.variables());
-        ExPlacement placement = (ExPlacement)exam.getAssignment();
+        ExPlacement placement = assignment.getValue(exam);
         if (placement==null) return null;
-        double current = (placement==null?0:placement.toDouble());
+        double current = (placement==null?0:placement.toDouble(assignment));
         int px = ToolBox.random(model.getNrPeriods());
         int rx = ToolBox.random(model.getRooms().size());
         for (int t=0;t<model.getNrPeriods();t++) {
@@ -67,14 +69,14 @@ public class ExSwapMove implements NeighbourSelection<ExExam, ExPlacement>, Hill
                 ExRoom room = model.getRooms().get((r+rx)%model.getRooms().size());
                 if (room.getSize()<exam.getStudents().size()) continue;
                 ExPlacement p = new ExPlacement(exam, period, room);
-                Set<ExPlacement> conflicts = model.conflictValues(p);
+                Set<ExPlacement> conflicts = model.conflictValues(assignment, p);
                 if (conflicts.isEmpty()) {
-                    if (model.inConflict(p)) continue;
-                    ItcSimpleNeighbour<ExExam, ExPlacement> n = new ItcSimpleNeighbour<ExExam, ExPlacement>(exam, p, p.toDouble()-current);
-                    if (!iHC || n.value()<=0) return n;
+                    if (model.inConflict(assignment, p)) continue;
+                    ItcSimpleNeighbour<ExExam, ExPlacement> n = new ItcSimpleNeighbour<ExExam, ExPlacement>(assignment, exam, p, p.toDouble(assignment)-current);
+                    if (!iHC || n.value(assignment)<=0) return n;
                 } else if (conflicts.size()==1 && !conflicts.contains(placement)) {
-                    Neighbour<ExExam, ExPlacement> n = exam.findSwap(((ExPlacement)conflicts.iterator().next()).variable());
-                    if (n!=null && (!iHC || n.value()<=0)) return n;
+                    Neighbour<ExExam, ExPlacement> n = exam.findSwap(assignment, ((ExPlacement)conflicts.iterator().next()).variable());
+                    if (n!=null && (!iHC || n.value(assignment)<=0)) return n;
                 }
             }
         }

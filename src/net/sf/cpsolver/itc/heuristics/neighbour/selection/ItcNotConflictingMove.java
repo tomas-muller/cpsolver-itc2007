@@ -1,14 +1,15 @@
 package net.sf.cpsolver.itc.heuristics.neighbour.selection;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Model;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Model;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 
 /**
@@ -45,10 +46,11 @@ public class ItcNotConflictingMove<V extends Variable<V, T>, T extends Value<V, 
     /** Neighbour selection */
     public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
         Model<V,T> model = solution.getModel();
+        Assignment<V, T> assignment = solution.getAssignment();
         V variable = ToolBox.random(model.variables());
         T value = ToolBox.random(variable.values());
-        if (value.equals(variable.getAssignment())) return null;
-        if (model.inConflict(value)) return null;
-        return new ItcSimpleNeighbour<V,T>(variable,value);
+        if (value.equals(assignment.getValue(variable))) return null;
+        if (model.inConflict(assignment, value)) return null;
+        return new ItcSimpleNeighbour<V,T>(assignment, variable,value);
     }
 }

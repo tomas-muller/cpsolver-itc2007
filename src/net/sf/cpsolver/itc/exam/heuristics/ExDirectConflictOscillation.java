@@ -1,7 +1,8 @@
 package net.sf.cpsolver.itc.exam.heuristics;
 
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
 import net.sf.cpsolver.itc.exam.model.ExExam;
 import net.sf.cpsolver.itc.exam.model.ExModel;
 import net.sf.cpsolver.itc.exam.model.ExPlacement;
@@ -45,8 +46,8 @@ public class ExDirectConflictOscillation extends ItcParameterWeightOscillation<E
     }
 
     /** Current value of the parameter weight */
-    public double currentValue() {
-        return ((ExModel)getModel()).getNrDirectConflicts(false);
+    public double currentValue(Assignment<ExExam, ExPlacement> assignment) {
+        return ((ExModel)getModel()).getNrDirectConflicts(assignment, false);
     }
     
     /** Update parameter weight with the new value */

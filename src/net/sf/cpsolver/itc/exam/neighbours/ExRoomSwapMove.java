@@ -4,12 +4,13 @@ package net.sf.cpsolver.itc.exam.neighbours;
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.exam.model.ExExam;
 import net.sf.cpsolver.itc.exam.model.ExModel;
 import net.sf.cpsolver.itc.exam.model.ExPeriod;
@@ -55,8 +56,9 @@ public class ExRoomSwapMove implements NeighbourSelection<ExExam, ExPlacement>, 
     /** Neighbour selection */
     public Neighbour<ExExam, ExPlacement> selectNeighbour(Solution<ExExam, ExPlacement> solution) {
         ExModel model = (ExModel)solution.getModel();
+        Assignment<ExExam, ExPlacement> assignment = solution.getAssignment();
         ExExam exam = (ExExam)ToolBox.random(model.variables());
-        ExPlacement placement = (ExPlacement)exam.getAssignment();
+        ExPlacement placement = assignment.getValue(exam);
         if (placement==null) return null;
         ExPeriod period = placement.getPeriod();
         int rx = ToolBox.random(model.getRooms().size());
@@ -65,18 +67,18 @@ public class ExRoomSwapMove implements NeighbourSelection<ExExam, ExPlacement>, 
             if (room.getSize()<exam.getStudents().size()) continue;
             ExPlacement p = new ExPlacement(exam, period, room);
             Set<ExPlacement> confs = new HashSet<ExPlacement>();
-            room.computeConflicts(p, confs);
+            room.computeConflicts(assignment, p, confs);
             if (confs.size()==1) {
-                Neighbour<ExExam, ExPlacement> n = findRoomSwap(exam, confs.iterator().next().variable());
-                if (n!=null && (!iHC || n.value()<=0)) return n;
+                Neighbour<ExExam, ExPlacement> n = findRoomSwap(assignment, exam, confs.iterator().next().variable());
+                if (n!=null && (!iHC || n.value(assignment)<=0)) return n;
             }
         }
         return null;
     }
     
-    private int mixedDurationsPenalty(ExPlacement placement, int newLength, int weight) {
+    private int mixedDurationsPenalty(Assignment<ExExam, ExPlacement> assignment, ExPlacement placement, int newLength, int weight) {
         int sameLength = 1, diffLength = 0;
-        for (ExPlacement p: placement.getRoom().getExams(placement.getPeriod())) {
+        for (ExPlacement p: placement.getRoom().getExams(assignment, placement.getPeriod())) {
             if (p.variable().equals(placement.variable())) continue;
             if (p.variable().getLength()!=newLength) diffLength++; else sameLength++;
         }
@@ -84,26 +86,26 @@ public class ExRoomSwapMove implements NeighbourSelection<ExExam, ExPlacement>, 
         return 0;
     }
     
-    private ItcSwap<ExExam, ExPlacement> findRoomSwap(ExExam ex1, ExExam ex2) {
+    private ItcSwap<ExExam, ExPlacement> findRoomSwap(Assignment<ExExam, ExPlacement> assignment, ExExam ex1, ExExam ex2) {
         ExModel model = (ExModel)ex1.getModel();
-        ExPlacement p1 = ex1.getAssignment();
-        ExPlacement p2 = ex2.getAssignment();
+        ExPlacement p1 = assignment.getValue(ex1);
+        ExPlacement p2 = assignment.getValue(ex2);
         if (p1==null || p2==null) return null;
         if (p1.getPeriodIndex()!=p2.getPeriodIndex()) return null;
         ExRoom r1 = p1.getRoom();
         ExRoom r2 = p2.getRoom();
         if (r1.equals(r2)) return null;
-        if (ex1.isRoomExclusive() && r2.getExams(p2.getPeriod()).size()>1) return null;
-        if (ex2.isRoomExclusive() && r1.getExams(p1.getPeriod()).size()>1) return null;
-        if (r2.getAvailableSpace(p2.getPeriod())+ex2.getStudents().size()<ex1.getStudents().size()) return null;
-        if (r1.getAvailableSpace(p1.getPeriod())+ex1.getStudents().size()<ex2.getStudents().size()) return null;
+        if (ex1.isRoomExclusive() && r2.getExams(assignment, p2.getPeriod()).size()>1) return null;
+        if (ex2.isRoomExclusive() && r1.getExams(assignment, p1.getPeriod()).size()>1) return null;
+        if (r2.getAvailableSpace(assignment, p2.getPeriod())+ex2.getStudents().size()<ex1.getStudents().size()) return null;
+        if (r1.getAvailableSpace(assignment, p1.getPeriod())+ex1.getStudents().size()<ex2.getStudents().size()) return null;
         ExPlacement np1 = new ExPlacement(ex1, p2.getPeriod(), p2.getRoom());
         ExPlacement np2 = new ExPlacement(ex2, p1.getPeriod(), p1.getRoom());
         double value = 0;
         if (ex1.getLength()!=ex2.getLength()) {
-            value = mixedDurationsPenalty(p1,ex2.getLength(),model.getMixedDurationWeight())+
-                    mixedDurationsPenalty(p2,ex1.getLength(),model.getMixedDurationWeight())-
-                    model.getMixedDurationWeight()*(p1.mixedDurationsPenalty()+p2.mixedDurationsPenalty());
+            value = mixedDurationsPenalty(assignment, p1,ex2.getLength(),model.getMixedDurationWeight())+
+                    mixedDurationsPenalty(assignment, p2,ex1.getLength(),model.getMixedDurationWeight())-
+                    model.getMixedDurationWeight()*(p1.mixedDurationsPenalty(assignment)+p2.mixedDurationsPenalty(assignment));
         }
         return new ItcSwap<ExExam, ExPlacement>(np1, np2, value); 
     }    

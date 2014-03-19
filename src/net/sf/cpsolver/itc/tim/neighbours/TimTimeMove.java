@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.tim.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection;
 import net.sf.cpsolver.itc.tim.model.TTComp02Model;
@@ -51,21 +52,21 @@ public class TimTimeMove implements NeighbourSelection<TimEvent, TimLocation>, H
     /** Neighbour selection */
     public Neighbour<TimEvent, TimLocation> selectNeighbour(Solution<TimEvent, TimLocation> solution) {
         TTComp02Model model = (TTComp02Model)solution.getModel();
+        Assignment<TimEvent, TimLocation> assignment = solution.getAssignment();
         TimEvent event = (TimEvent)ToolBox.random(model.variables());
-        TimRoom room = (event.getAssignment()==null?
-                (TimRoom)ToolBox.random(event.rooms()):
-                ((TimLocation)event.getAssignment()).room());
+        TimLocation location = assignment.getValue(event);
+        TimRoom room = (location == null ? ToolBox.random(event.rooms()) : location.room());
         if (room==null) room = (TimRoom)ToolBox.random(event.rooms());
         int tx = ToolBox.random(45);
         time: for (int t=0;t<45;t++) {
             int time = (t + tx) % 45;
             if (!event.isAvailable(time)) continue;
-            if (room.getLocation(time)!=null) continue;
+            if (room.getLocation(assignment, time)!=null) continue;
             for (TimStudent student: event.students()) {
-                if (student.getLocation(time)!=null) continue time;
+                if (student.getLocation(assignment, time)!=null) continue time;
             }
-            Neighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(event, new TimLocation(event, time, room));
-            if (!iHC || n.value()<=0) return n;
+            Neighbour<TimEvent, TimLocation> n = new ItcSimpleNeighbour<TimEvent, TimLocation>(assignment, event, new TimLocation(event, time, room));
+            if (!iHC || n.value(assignment)<=0) return n;
         }
         return null;
     }

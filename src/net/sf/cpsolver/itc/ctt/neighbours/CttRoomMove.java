@@ -1,11 +1,12 @@
 package net.sf.cpsolver.itc.ctt.neighbours;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.ctt.model.CttLecture;
 import net.sf.cpsolver.itc.ctt.model.CttModel;
 import net.sf.cpsolver.itc.ctt.model.CttPlacement;
@@ -50,18 +51,19 @@ public class CttRoomMove implements NeighbourSelection<CttLecture, CttPlacement>
     /** Neighbour selection */
     public Neighbour<CttLecture, CttPlacement> selectNeighbour(Solution<CttLecture, CttPlacement> solution) {
         CttModel model = (CttModel)solution.getModel();
+        Assignment<CttLecture, CttPlacement> assignment = solution.getAssignment();
         CttLecture lecture = (CttLecture)ToolBox.random(model.variables());
-        CttPlacement placement = (CttPlacement)lecture.getAssignment();
+        CttPlacement placement = assignment.getValue(lecture);
         int day = (placement==null?ToolBox.random(model.getNrDays()):placement.getDay());
         int slot = (placement==null?ToolBox.random(model.getNrSlotsPerDay()):placement.getSlot());
         if (placement==null && !lecture.getCourse().isAvailable(day, slot)) return null;
         int rx = ToolBox.random(model.getRooms().size());
         for (int r=0;r<model.getRooms().size();r++) {
             CttRoom room = model.getRooms().get((r+rx)%model.getRooms().size());
-            CttPlacement conflict = (CttPlacement)room.getConstraint().getPlacement(day, slot);
+            CttPlacement conflict = (CttPlacement)room.getConstraint().getPlacement(assignment, day, slot);
             if (conflict==null) {
-                ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, new CttPlacement(lecture, room, day, slot));
-                if (!iHC || n.value()<=0) return n;
+                ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(assignment, lecture, new CttPlacement(lecture, room, day, slot));
+                if (!iHC || n.value(assignment)<=0) return n;
             }
         }
         return null;

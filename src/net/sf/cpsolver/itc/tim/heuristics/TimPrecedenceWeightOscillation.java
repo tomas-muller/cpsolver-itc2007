@@ -1,7 +1,8 @@
 package net.sf.cpsolver.itc.tim.heuristics;
 
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
 import net.sf.cpsolver.itc.heuristics.ItcParameterWeightOscillation;
 import net.sf.cpsolver.itc.tim.model.TimEvent;
 import net.sf.cpsolver.itc.tim.model.TimLocation;
@@ -42,8 +43,8 @@ public class TimPrecedenceWeightOscillation extends ItcParameterWeightOscillatio
     }
     
     /** Current value of the parameter weight */
-    public double currentValue() {
-        return ((TimModel)getModel()).precedenceViolations(false);
+    public double currentValue(Assignment<TimEvent, TimLocation> assignment) {
+        return ((TimModel)getModel()).precedenceViolations(assignment, false);
     }
     /** Update parameter weight with the new value */
     public void changeWeight(double weight) {

@@ -6,15 +6,18 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solution.SolutionListener;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.JProf;
-import net.sf.cpsolver.ifs.util.Progress;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solution.SolutionListener;
+import org.cpsolver.ifs.solver.ParallelSolver;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.JProf;
+import org.cpsolver.ifs.util.Progress;
+import org.cpsolver.ifs.util.ToolBox;
 
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.FileAppender;
@@ -112,7 +115,7 @@ public class ItcTest {
     /** Setup Log4j logging */
     public static void setupLogging(File logFile, boolean info, boolean debug) {
         Logger root = Logger.getRootLogger();
-        ConsoleAppender console = new ConsoleAppender(new PatternLayout("%m%n"));//%-5p %c{1}> %m%n
+        ConsoleAppender console = new ConsoleAppender(new PatternLayout("[%t] %m%n"));//%-5p %c{1}> %m%n
         console.setThreshold(info?Level.INFO:Level.WARN);
         root.addAppender(console);
         Logger.getLogger(JProf.class).setLevel(Level.ERROR);
@@ -238,8 +241,18 @@ public class ItcTest {
             return null;
         }
         
-        Solver solver = new Solver(sConfig);
-		Solution solution = new Solution(model);
+        Solver solver = new ParallelSolver(sConfig) {
+        	@Override
+        	protected Solution createParallelSolution(int index) {
+        		ItcModel model = (ItcModel)currentSolution().getModel();
+        		Assignment assignment = model.createAssignment(index, currentSolution().getAssignment());
+        		Solution solution = new Solution(model, assignment);
+                for (SolutionListener listener: (List<SolutionListener>)currentSolution().getSolutionListeners())
+                    solution.addSolutionListener(listener);
+                return solution;
+            }
+        };
+		Solution solution = new Solution(model, model.createAssignment(0, null));
         solver.setInitalSolution(solution);
         
         solver.currentSolution().addSolutionListener(new SolutionListener() {
@@ -249,9 +262,14 @@ public class ItcTest {
             public void bestCleared(Solution solution) {}
             public void bestSaved(Solution solution) {
                 ItcModel m = (ItcModel)solution.getModel();
-                sLog.info("**BEST["+solution.getIteration()+"]** V:"+m.nrAssignedVariables()+"/"+m.variables().size()+", P:"+Math.round(m.getTotalValue())+" ("+m.csvLine()+")");
+                Assignment a = solution.getAssignment();
+                sLog.info("**BEST["+solution.getIteration()+"]** V:"+a.nrAssignedVariables()+"/"+m.variables().size()+", P:"+Math.round(m.getTotalValue(a))+" ("+m.csvLine(a)+")");
             }
-            public void bestRestored(Solution solution) {}
+            public void bestRestored(Solution solution) {
+                ItcModel m = (ItcModel)solution.getModel();
+                Assignment a = solution.getAssignment();
+            	sLog.info("##RESTORED["+solution.getIteration()+"]## V:"+a.nrAssignedVariables()+"/"+m.variables().size()+", P:"+Math.round(m.getTotalValue(a))+" ("+m.csvLine(a)+")");
+            }
         });
         
         return solver;
@@ -293,27 +311,29 @@ public class ItcTest {
         sLog.info("Best solution:"+ToolBox.dict2string(solution.getExtendedInfo(),1));
         
         sLog.info("Best solution found after "+solution.getBestTime()+" seconds ("+solution.getBestIteration()+" iterations).");
-        sLog.info("Number of assigned variables is "+solution.getModel().assignedVariables().size());
-        sLog.info("Total value of the solution is "+solution.getModel().getTotalValue());
+        sLog.info("Number of assigned variables is "+solution.getAssignment().nrAssignedVariables());
+        sLog.info("Total value of the solution is "+solution.getModel().getTotalValue(solution.getAssignment()));
         
-        if (sOutputFile!=null && !model.save(sOutputFile)) {
+        if (sOutputFile!=null && !model.save(solution.getAssignment(), sOutputFile)) {
             sLog.error("Unable to save solution.");
         }
         
-        if (sCSVFile!=null && model.cvsPrint()) {
+        if (sCSVFile!=null && model.cvsPrint(solution.getAssignment())) {
             boolean ex = sCSVFile.exists();
             PrintWriter w = new PrintWriter(new FileWriter(sCSVFile,true));
             if (!ex)
                 w.println("seed,timeout,time,iter,total,"+model.csvHeader());
             ItcModel m = (ItcModel)solution.getModel();
+            Assignment a = solution.getAssignment();
             DecimalFormat df = new DecimalFormat("0.00");
             w.println(
                     sSeed+","+
                     sTimeOut+","+
                     df.format(solution.getBestTime())+","+
                     solution.getBestIteration()+","+
-                    Math.round(m.getTotalValue()+5000*m.unassignedVariables().size())+","+
-                    model.csvLine());
+                    Math.round(m.getTotalValue(solution.getAssignment()) + 5000 * a.nrUnassignedVariables(m))+","+
+                    model.csvLine(a) + "," +
+                    model.getProperties().getPropertyInt("Parallel.NrSolvers", 4));
             w.flush(); w.close();
         }
         

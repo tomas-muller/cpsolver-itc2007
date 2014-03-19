@@ -2,7 +2,8 @@ package net.sf.cpsolver.itc.tim.model;
 
 import java.util.Iterator;
 
-import net.sf.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
 
 /**
@@ -62,9 +63,9 @@ public class TimLocation extends Value<TimEvent, TimLocation> implements TabuEle
 	}
 	
 	/** Assignment score (as string) */
-	public String scoreStr() {
-        int[] score = score();
-        return score[0]+","+score[1]+","+score[2]+","+precedenceViolations();
+	public String scoreStr(Assignment<TimEvent, TimLocation> assignment) {
+        int[] score = score(assignment);
+        return score[0]+","+score[1]+","+score[2]+","+precedenceViolations(assignment);
 	}
 	
 	/** Location name (room @ time) */
@@ -75,7 +76,7 @@ public class TimLocation extends Value<TimEvent, TimLocation> implements TabuEle
 	/** Assignment score of this assignment
 	 * @return number of students having single event a day, last slot of a day, two consecutive classes
 	 */
-	public int[] score() {
+	public int[] score(Assignment<TimEvent, TimLocation> assignment) {
         int[] score = new int[] {0,0,0};
         TimEvent event = (TimEvent)variable();
         int d = iTime / 9;
@@ -83,7 +84,7 @@ public class TimLocation extends Value<TimEvent, TimLocation> implements TabuEle
         if (t==8) score[1]=event.students().size();
         int dfs = d*9, dls = dfs + 8; 
         for (TimStudent student: event.students()) {
-            TimLocation[] table = student.getTable();
+            TimLocation[] table = student.getTable(assignment);
             int eventsADay = 1;
             int left = 0;
             boolean hole = false;
@@ -150,13 +151,13 @@ public class TimLocation extends Value<TimEvent, TimLocation> implements TabuEle
 	}
 	
 	/** Weighted sum of all criteria (violated soft constraints) for this location */
-	public int toInt() {
+	public int toInt(Assignment<TimEvent, TimLocation> assignment) {
         TimEvent event = (TimEvent)variable();
         int d = iTime / 9, t = iTime % 9;
         int score = (t==8?event.students().size():0);
         int dfs = d*9, dls = dfs + 8; 
         for (TimStudent student: event.students()) {
-            TimLocation[] table = student.getTable();
+            TimLocation[] table = student.getTable(assignment);
             int eventsADay = 1;
             int left = 0;
             boolean hole = false;
@@ -184,31 +185,30 @@ public class TimLocation extends Value<TimEvent, TimLocation> implements TabuEle
                 score+=(left+right+1-2)-Math.max(0,left-2)-Math.max(0,right-2);
             }
         }
-	    return 
-	        score+
-	        TimModel.sPrecedenceViolationWeight*precedenceViolations()+
-	        (room()==null?TimModel.sNoRoomWeight:0)//*event.students().size():0)
-	        ;
+	    return score +
+	    		TimModel.sPrecedenceViolationWeight * precedenceViolations(assignment) +
+	    		(room() == null ? TimModel.sNoRoomWeight  :0) // * event.students().size() : 0)
+	    		;
 	}
 	
     /** Number of violated precedence constraints */
-	public int precedenceViolations() {
+	public int precedenceViolations(Assignment<TimEvent, TimLocation> assignment) {
 	    int violations = 0;
 	    TimEvent event = (TimEvent)variable();
 	    for (Iterator<TimEvent> i=event.predecessors().iterator();i.hasNext();) {
-	        TimLocation prev = i.next().getAssignment();
+	        TimLocation prev = assignment.getValue(i.next());
 	        if (prev!=null && prev.time()>=time()) violations++;//+=Math.min(event.students().size(),((TimEvent)prev.variable()).students().size());
 	    }
         for (Iterator<TimEvent> i=event.successors().iterator();i.hasNext();) {
-            TimLocation next = i.next().getAssignment();
+            TimLocation next = assignment.getValue(i.next());
             if (next!=null && time()>=next.time()) violations++;//+=Math.min(event.students().size(),((TimEvent)next.variable()).students().size());
         }
 	    return violations;
 	}
 	
 	/** Weighted sum of all criteria (violated soft constraints) for this location */
-	public double toDouble() {
-	    return toInt();
+	public double toDouble(Assignment<TimEvent, TimLocation> assignment) {
+	    return toInt(assignment);
 	}
 
 	/** Compare two locations for equality */

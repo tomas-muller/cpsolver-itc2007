@@ -3,12 +3,13 @@ package net.sf.cpsolver.itc.ctt.neighbours;
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.ctt.model.CttCourse;
 import net.sf.cpsolver.itc.ctt.model.CttCurricula;
 import net.sf.cpsolver.itc.ctt.model.CttLecture;
@@ -57,36 +58,37 @@ public class CttCourseMinDaysMove implements NeighbourSelection<CttLecture, CttP
     /** Neighbour selection */
     public Neighbour<CttLecture, CttPlacement> selectNeighbour(Solution<CttLecture, CttPlacement> solution) {
         CttModel model = (CttModel)solution.getModel();
-        if (model.getMinDaysPenalty(false)<=0) return null;
+        Assignment<CttLecture, CttPlacement> assignment = solution.getAssignment();
+        if (model.getMinDaysPenalty(assignment, false)<=0) return null;
         int cx = ToolBox.random(model.getCourses().size());
         for (int c=0;c<model.getCourses().size();c++) {
             CttCourse course = model.getCourses().get((c+cx)%model.getCourses().size());
             int days = 0, nrDays = 0;
             Set<Integer> adepts = new HashSet<Integer>();
             for (int i=0;i<course.getNrLectures();i++) {
-                if (course.getLecture(i).getAssignment()==null) {
+            	CttPlacement p = assignment.getValue(course.getLecture(i));
+                if (p == null) {
                     nrDays++;
                 } else {
-                    int d = (((CttPlacement)course.getLecture(i).getAssignment()).getDay());
-                    int day = 1 << d;
+                    int day = 1 << p.getDay();
                     if ((days & day) == 0) nrDays ++;
-                    else adepts.add(new Integer(d));
+                    else adepts.add(new Integer(p.getDay()));
                     days |= day;
                 }
             }
             if (nrDays>=course.getMinDays()) continue;
-            return findNeighbour(course,days,adepts);
+            return findNeighbour(assignment,course,days,adepts);
         }
         return null;
     }
     
-    private Neighbour<CttLecture, CttPlacement> findNeighbour(CttCourse course, int days, Set<Integer> adepts) {
+    private Neighbour<CttLecture, CttPlacement> findNeighbour(Assignment<CttLecture, CttPlacement> assignment, CttCourse course, int days, Set<Integer> adepts) {
         int lx = ToolBox.random(course.getNrLectures());
         for (int l=0;l<course.getNrLectures();l++) {
             CttLecture lecture = course.getLecture((l+lx)%course.getNrLectures());
-            CttPlacement placement = lecture.getAssignment();
+            CttPlacement placement = assignment.getValue(lecture);
             if (placement==null || !adepts.contains(new Integer(placement.getDay()))) continue;
-            int minDayPenalty = placement.getMinDaysPenalty();
+            int minDayPenalty = placement.getMinDaysPenalty(assignment);
             int slot = placement.getSlot();
             CttRoom originalRoom = placement.getRoom();
             int dx = ToolBox.random(course.getModel().getNrDays());
@@ -94,23 +96,23 @@ public class CttCourseMinDaysMove implements NeighbourSelection<CttLecture, CttP
                 int day = (d+dx)%course.getModel().getNrDays();
                 if ((days & (1<<day))!=0) continue;
                 if (!lecture.getCourse().isAvailable(day,slot)) continue;
-                int minDayChange = placement.getMinDaysPenalty(day) - minDayPenalty;
+                int minDayChange = placement.getMinDaysPenalty(assignment, day) - minDayPenalty;
                 if (minDayChange>=0) continue;
-                if (lecture.getCourse().getTeacher().getConstraint().getPlacement(day,slot)!=null) continue;
+                if (lecture.getCourse().getTeacher().getConstraint().getPlacement(assignment, day,slot)!=null) continue;
                 for (CttCurricula curricula: lecture.getCourse().getCurriculas()) {
-                    if (curricula.getConstraint().getPlacement(day,slot)!=null) continue day;
+                    if (curricula.getConstraint().getPlacement(assignment, day,slot)!=null) continue day;
                 }
-                if (originalRoom.getConstraint().getPlacement(day, slot)==null) {
-                    ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, new CttPlacement(lecture, originalRoom, day, slot));
-                    if (!iHC || n.value()<=0) return n;
+                if (originalRoom.getConstraint().getPlacement(assignment, day, slot)==null) {
+                    ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(assignment, lecture, new CttPlacement(lecture, originalRoom, day, slot));
+                    if (!iHC || n.value(assignment)<=0) return n;
                 }
                 int rx = ToolBox.random(course.getModel().getRooms().size());
                 for (int r=0;r<course.getModel().getRooms().size();r++) {
                     CttRoom room = course.getModel().getRooms().get((r+rx)%course.getModel().getRooms().size());
                     if (room.getSize()<course.getNrStudents()) continue;
-                    if (room.getConstraint().getPlacement(day, slot)==null) { 
-                        ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(lecture, new CttPlacement(lecture, room, day, slot));
-                        if (!iHC || n.value()<=0) return n;
+                    if (room.getConstraint().getPlacement(assignment, day, slot)==null) { 
+                        ItcSimpleNeighbour<CttLecture, CttPlacement> n = new ItcSimpleNeighbour<CttLecture, CttPlacement>(assignment, lecture, new CttPlacement(lecture, room, day, slot));
+                        if (!iHC || n.value(assignment)<=0) return n;
                     }
                 }
             }

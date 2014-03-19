@@ -3,8 +3,9 @@ package net.sf.cpsolver.itc.tim.model;
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.model.BinaryConstraint;
-import net.sf.cpsolver.ifs.model.ConstraintListener;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.BinaryConstraint;
+import org.cpsolver.ifs.model.ConstraintListener;
 
 /**
  * Representation of a precedence constraint. The first given event has
@@ -40,7 +41,6 @@ public class TimPrecedence extends BinaryConstraint<TimEvent, TimLocation> {
      */
     public TimPrecedence(TimEvent first, TimEvent second) {
         super();
-        iAssignedVariables=null;
         addVariable(first);
         addVariable(second);
     }
@@ -48,19 +48,19 @@ public class TimPrecedence extends BinaryConstraint<TimEvent, TimLocation> {
     /**
      * Compute conflicts: check start time of the other event versus the start time of the given event
      */
-    public void computeConflicts(TimLocation value, Set<TimLocation> conflicts) {
+    public void computeConflicts(Assignment<TimEvent, TimLocation> assignment, TimLocation value, Set<TimLocation> conflicts) {
         if (!iIsHard) return;
-        if (inConflict(value))
-            conflicts.add(another(value.variable()).getAssignment());
+        if (inConflict(assignment, value))
+            conflicts.add(assignment.getValue(another(value.variable())));
     }
     
     /**
      * Check for conflicts: check start time of the other event versus the start time of the given event
      */
-    public boolean inConflict(TimLocation value) {
+    public boolean inConflict(Assignment<TimEvent, TimLocation> assignment, TimLocation value) {
         if (!iIsHard) return false;
-        TimLocation first = (first().equals(value.variable()) ? value : first().getAssignment());
-        TimLocation second = (second().equals(value.variable()) ? value : second().getAssignment());
+        TimLocation first = (first().equals(value.variable()) ? value : assignment.getValue(first()));
+        TimLocation second = (second().equals(value.variable()) ? value : assignment.getValue(second()));
         return (first!=null && second!=null && first.time()>=second.time());
     }
     
@@ -97,19 +97,22 @@ public class TimPrecedence extends BinaryConstraint<TimEvent, TimLocation> {
     /**
      * True if the first event is preceding the second event.
      */
-    public boolean isSatisfied() {
-        TimLocation first = (TimLocation)first().getAssignment();
-        TimLocation second = (TimLocation)second().getAssignment();
+    public boolean isSatisfied(Assignment<TimEvent, TimLocation> assignment) {
+        TimLocation first = (TimLocation)assignment.getValue(first());
+        TimLocation second = (TimLocation)assignment.getValue(second());
         return (first==null || second==null || first.time()<second.time());
     }
     
-    public void assigned(long iteration, TimLocation value) {
-        if (isHard() && inConflict(value)) {
-            Set<TimLocation> confs = new HashSet<TimLocation>(); confs.add(another(value.variable()).getAssignment());
-            another(value.variable()).unassign(iteration);
-            if (iConstraintListeners!=null)
-                for (ConstraintListener<TimLocation> listener: iConstraintListeners)
-                    listener.constraintAfterAssigned(iteration, this, value, confs);
+    public void assigned(Assignment<TimEvent, TimLocation> assignment, long iteration, TimLocation value) {
+        if (isHard() && inConflict(assignment, value)) {
+            if (iConstraintListeners!=null) {
+                Set<TimLocation> confs = new HashSet<TimLocation>(); confs.add(assignment.getValue(another(value.variable())));
+                assignment.unassign(iteration, another(value.variable()));
+                for (ConstraintListener<TimEvent, TimLocation> listener: iConstraintListeners)
+                    listener.constraintAfterAssigned(assignment, iteration, this, value, confs);
+            } else {
+            	assignment.unassign(iteration, another(value.variable()));
+            }
         }
     }
         

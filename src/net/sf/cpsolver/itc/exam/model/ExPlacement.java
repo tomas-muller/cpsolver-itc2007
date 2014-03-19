@@ -2,8 +2,9 @@ package net.sf.cpsolver.itc.exam.model;
 
 import java.util.Set;
 
-import net.sf.cpsolver.ifs.model.BinaryConstraint;
-import net.sf.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.BinaryConstraint;
+import org.cpsolver.ifs.model.Value;
 import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch.TabuElement;
 
 /**
@@ -69,8 +70,8 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
     }
     
     /** String representation */
-    public String toString() {
-        return variable().getName()+"="+getName()+" ("+toInt()+")";
+    public String toString(Assignment<ExExam, ExPlacement> assignment) {
+        return variable().getName()+"="+getName()+" ("+toInt(assignment)+")";
     }
     
     /** Period penalty */
@@ -79,7 +80,7 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
     }
     
     /** Two exams in a row penalty */
-    public int twoInARowPenalty() {
+    public int twoInARowPenalty(Assignment<ExExam, ExPlacement> assignment) {
         ExExam exam = (ExExam)variable();
         ExModel m = (ExModel)exam.getModel();
         ExPeriod prevPeriod = getPeriod().prev();
@@ -89,26 +90,26 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
         if (!prev && !next) return 0;
         int penalty = 0;
         for (ExStudent student: variable().getStudents()) {
-            if (m.areDirectConflictsAllowed() && student.nrExams(getPeriod(), exam)>0) continue;
-            if (next && student.hasExam(nextPeriod,exam)) penalty++;
-            if (prev && student.hasExam(prevPeriod,exam)) penalty++;
+            if (m.areDirectConflictsAllowed() && student.nrExams(assignment, getPeriod(), exam)>0) continue;
+            if (next && student.hasExam(assignment, nextPeriod,exam)) penalty++;
+            if (prev && student.hasExam(assignment, prevPeriod,exam)) penalty++;
         }
         return penalty;
     }
     
     /** Number of direct conflicts */
-    public int nrDirectConflicts() {
+    public int nrDirectConflicts(Assignment<ExExam, ExPlacement> assignment) {
         ExExam exam = (ExExam)variable();
         ExModel m = (ExModel)exam.getModel();
         if (!m.areDirectConflictsAllowed()) return 0;
         int conflicts = 0;
         for (ExStudent student: variable().getStudents())
-            if (student.nrExams(getPeriod(), exam)>0) conflicts++;
+            if (student.nrExams(assignment, getPeriod(), exam)>0) conflicts++;
         return conflicts;
     }
 
     /** Two exams in a day penalty */
-    public int twoInADayPenalty() {
+    public int twoInADayPenalty(Assignment<ExExam, ExPlacement> assignment) {
         ExExam exam = (ExExam)variable();
         ExModel m = (ExModel)exam.getModel();
         ExPeriod prevPeriod = (getPeriod().prev()==null?null:getPeriod().prev().prev());
@@ -118,33 +119,33 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
         if (!prev && !next) return 0;
         int penalty = 0;
         for (ExStudent student: variable().getStudents()) {
-            if (m.areDirectConflictsAllowed() && student.nrExams(getPeriod(), exam)>0) continue;
+            if (m.areDirectConflictsAllowed() && student.nrExams(assignment, getPeriod(), exam)>0) continue;
             if (prev) 
                 for (ExPeriod p=prevPeriod;p!=null && p.getDay()==getPeriod().getDay();p=p.prev())
-                    if (student.hasExam(p,exam)) penalty++;
+                    if (student.hasExam(assignment, p,exam)) penalty++;
             if (next)
                 for (ExPeriod p=nextPeriod;p!=null && p.getDay()==getPeriod().getDay();p=p.next())
-                    if (student.hasExam(p,exam)) penalty++; 
+                    if (student.hasExam(assignment, p,exam)) penalty++; 
         }
         return penalty;
     }
     
     /** Period spread penalty */
-    public int widerSpreadPenalty() {
+    public int widerSpreadPenalty(Assignment<ExExam, ExPlacement> assignment) {
         ExExam exam = (ExExam)variable();
         ExModel m = (ExModel)exam.getModel();
         int penalty = 0;
         for (ExStudent student: variable().getStudents()) {
-            if (m.areDirectConflictsAllowed() && student.nrExams(getPeriod(), exam)>0) continue;
+            if (m.areDirectConflictsAllowed() && student.nrExams(assignment, getPeriod(), exam)>0) continue;
             for (ExPeriod p=getPeriod().next();p!=null && p.getIndex()-getPeriod().getIndex()<=m.getPeriodSpreadLength(); p=p.next())
-                if (student.hasExam(p,exam)) penalty++;
+                if (student.hasExam(assignment, p,exam)) penalty++;
             for (ExPeriod p=getPeriod().prev();p!=null && getPeriod().getIndex()-p.getIndex()<=m.getPeriodSpreadLength(); p=p.prev())
-                if (student.hasExam(p,exam)) penalty++;
+                if (student.hasExam(assignment, p,exam)) penalty++;
         }
         return penalty;
     }
     
-    private int combinedPenalty() {
+    private int combinedPenalty(Assignment<ExExam, ExPlacement> assignment) {
         ExExam exam = (ExExam)variable();
         ExModel m = (ExModel)exam.getModel();
         ExPeriod prevPeriod = getPeriod().prev();
@@ -159,7 +160,7 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
         for (ExStudent student: variable().getStudents()) {
 
             if (m.areDirectConflictsAllowed()) {
-                Set<ExExam> exams = student.getExams(getPeriod());
+                Set<ExExam> exams = student.getExams(assignment, getPeriod());
                 int nrExams = exams.size() + (exams.contains(exam)?0:1);
                 if (nrExams>1) {
                     penalty+=m.getDirectConflictWeight();
@@ -168,29 +169,29 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
             }
 
             for (ExPeriod p=getPeriod().next();p!=null && p.getIndex()-getPeriod().getIndex()<=m.getPeriodSpreadLength(); p=p.next())
-                if (student.hasExam(p,exam)) penalty++;
+                if (student.hasExam(assignment, p,exam)) penalty++;
             for (ExPeriod p=getPeriod().prev();p!=null && getPeriod().getIndex()-p.getIndex()<=m.getPeriodSpreadLength(); p=p.prev())
-                if (student.hasExam(p,exam)) penalty++;
+                if (student.hasExam(assignment, p,exam)) penalty++;
             
-            if (prev && student.hasExam(prevPeriod,exam)) penalty+=m.getTwoInARowWeight();
-            if (next && student.hasExam(nextPeriod,exam)) penalty+=m.getTwoInARowWeight();
+            if (prev && student.hasExam(assignment, prevPeriod,exam)) penalty+=m.getTwoInARowWeight();
+            if (next && student.hasExam(assignment, nextPeriod,exam)) penalty+=m.getTwoInARowWeight();
 
             if (prev2) 
                 for (ExPeriod p=prevPeriod2;p!=null && p.getDay()==getPeriod().getDay();p=p.prev())
-                    if (student.hasExam(p,exam)) penalty+=m.getTwoInADayWeight(); 
+                    if (student.hasExam(assignment, p,exam)) penalty+=m.getTwoInADayWeight(); 
             if (next2)
                 for (ExPeriod p=nextPeriod2;p!=null && p.getDay()==getPeriod().getDay();p=p.next())
-                    if (student.hasExam(p,exam)) penalty+=m.getTwoInADayWeight();
+                    if (student.hasExam(assignment, p,exam)) penalty+=m.getTwoInADayWeight();
         }
         return penalty;
     }
     
     /** Mixed durations penalty */
-    public int mixedDurationsPenalty() {
+    public int mixedDurationsPenalty(Assignment<ExExam, ExPlacement> assignment) {
         int length = ((ExExam)variable()).getLength();
         int sameLength = 1, diffLength = 0;
         ExExam exam = (ExExam)variable();
-        for (ExPlacement p: getRoom().getExams(getPeriod())) {
+        for (ExPlacement p: getRoom().getExams(assignment, getPeriod())) {
             if (exam.equals(p.variable())) continue;
             if (p.variable().getLength()!=length) diffLength++; else sameLength++;
         }
@@ -206,16 +207,16 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
     }
     
     /** Number of violated binary constraints */ 
-    public int nrBinaryViolations() {
+    public int nrBinaryViolations(Assignment<ExExam, ExPlacement> assignment) {
         ExExam exam = (ExExam)variable();
         int viol = 0;
         for (BinaryConstraint<ExExam, ExPlacement> bc: exam.binaryConstraints()) {
             if (bc.isHard()) continue;
             if (bc.first().equals(exam)) {
-                ExPlacement another = bc.second().getAssignment();
+                ExPlacement another = assignment.getValue(bc.second());
                 if (another!=null && !bc.isConsistent(this, another)) viol++;
             } else {
-                ExPlacement another = bc.first().getAssignment();
+                ExPlacement another = assignment.getValue(bc.first());
                 if (another!=null && !bc.isConsistent(another, this)) viol++;
             }
         }
@@ -223,43 +224,43 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
     }
     
     /** Weighted sum of all criteria (violated soft constraints) */ 
-    public int toInt() {
+    public int toInt(Assignment<ExExam, ExPlacement> assignment) {
         ExModel m = (ExModel)variable().getModel();
         return 
-            m.getBinaryViolationWeight()*nrBinaryViolations()+
-            combinedPenalty()+
+            m.getBinaryViolationWeight()*nrBinaryViolations(assignment)+
+            combinedPenalty(assignment)+
             /*
             m.getDirectConflictWeight()*nrDirectConflicts()+
             m.getTwoInARowWeight()*twoInARowPenalty()+
             m.getTwoInADayWeight()*twoInADayPenalty()+
             widerSpreadPenalty()+*/
-            m.getMixedDurationWeight()*mixedDurationsPenalty()+
+            m.getMixedDurationWeight()*mixedDurationsPenalty(assignment)+
             m.getFrontLoadWeight()*frontLoadPenalty()+
             getRoom().getPenalty()+
             getPeriodPenalty();
     }
     
     /** Weighted sum of all time-related criteria (violated soft constraints) */
-    public double getTimeCost() {
+    public double getTimeCost(Assignment<ExExam, ExPlacement> assignment) {
         ExModel m = (ExModel)variable().getModel();
         return 
-            m.getBinaryViolationWeight()*nrBinaryViolations()+
-            combinedPenalty()+
+            m.getBinaryViolationWeight()*nrBinaryViolations(assignment)+
+            combinedPenalty(assignment)+
             m.getFrontLoadWeight()*frontLoadPenalty()+
             getPeriodPenalty();
     }
     
     /** Weighted sum of all room-related criteria (violated soft constraints) */
-    public double getRoomCost() {
+    public double getRoomCost(Assignment<ExExam, ExPlacement> assignment) {
         ExModel m = (ExModel)variable().getModel();
         return 
-            m.getMixedDurationWeight()*mixedDurationsPenalty()+
+            m.getMixedDurationWeight()*mixedDurationsPenalty(assignment)+
             getRoom().getPenalty();
     }
 
     /** Weighted sum of all criteria (violated soft constraints) */
-    public double toDouble() {
-        return toInt(); 
+    public double toDouble(Assignment<ExExam, ExPlacement> assignment) {
+        return toInt(assignment); 
     }
     
 

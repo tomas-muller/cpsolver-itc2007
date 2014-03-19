@@ -5,14 +5,15 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import net.sf.cpsolver.ifs.extension.Extension;
-import net.sf.cpsolver.ifs.model.Model;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solution.SolutionListener;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.extension.Extension;
+import org.cpsolver.ifs.model.Model;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solution.SolutionListener;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
 
 public abstract class ItcParameterWeightOscillation<V extends Variable<V, T>, T extends Value<V, T>> extends Extension<V, T> implements SolutionListener<V, T> {
     public long iUpdateInterval = 5000;
@@ -27,7 +28,7 @@ public abstract class ItcParameterWeightOscillation<V extends Variable<V, T>, T 
     public double iWeightOscillationCoef = 0.5;
     private double iCurrentValue = 0;
     private double iBestValue = 0;
-    private List<OscillationListener> iOscillationListeners = new ArrayList<OscillationListener>();
+    private List<OscillationListener<V,T>> iOscillationListeners = new ArrayList<OscillationListener<V,T>>();
     
     public ItcParameterWeightOscillation(Solver<V,T> solver, DataProperties properties) {
         super(solver, properties);
@@ -51,7 +52,7 @@ public abstract class ItcParameterWeightOscillation<V extends Variable<V, T>, T 
     }
     
     public boolean init(Solver<V,T> solver) {
-        iCurrentValue = iBestValue = currentValue();
+        iCurrentValue = iBestValue = currentValue(solver.currentSolution().getAssignment());
         weightChanged(getWeight(),getWeight());
         return super.init(solver);
     }
@@ -74,25 +75,25 @@ public abstract class ItcParameterWeightOscillation<V extends Variable<V, T>, T 
         return iWeight;
     }
     
-    public abstract double currentValue();
+    public abstract double currentValue(Assignment<V, T> assignment);
     public abstract void changeWeight(double weight);
     
     public boolean isImproving(Solution<V,T> solution) {
-        if (solution.getModel().getBestUnassignedVariables()!=0 && solution.getModel().nrUnassignedVariables()==0) {
-            iCurrentValue = currentValue();
+        if (solution.getModel().getBestUnassignedVariables()!=0 && solution.getAssignment().nrAssignedVariables() == solution.getModel().variables().size()) {
+            iCurrentValue = currentValue(solution.getAssignment());
             return true;
         }
-        if (currentValue()<iCurrentValue) {
-            iCurrentValue = currentValue();
+        if (currentValue(solution.getAssignment())<iCurrentValue) {
+            iCurrentValue = currentValue(solution.getAssignment());
             return true;
         }
         return false;
     }
     
     public void weightChanged(int oldWeight, int newWeight) {
-        getSolver().currentSolution().setBestValue(getSolver().currentSolution().getBestValue() + (newWeight-oldWeight) * iBestValue);
-        for (OscillationListener listener: iOscillationListeners)
-            listener.bestValueChanged((newWeight-oldWeight) * iBestValue);
+        getSolver().currentSolution().getModel().setBestValue(getSolver().currentSolution().getModel().getBestValue() + (newWeight-oldWeight) * iBestValue);
+        for (OscillationListener<V,T> listener: iOscillationListeners)
+            listener.bestValueChanged(getSolver().currentSolution(), (newWeight-oldWeight) * iBestValue);
         changeWeight(newWeight);
     }
     
@@ -116,19 +117,19 @@ public abstract class ItcParameterWeightOscillation<V extends Variable<V, T>, T 
     public void getInfo(Solution<V,T> solution, Map<String, String> info, Collection<V> variables) {}
     public void bestCleared(Solution<V,T> solution) {}
     public void bestSaved(Solution<V,T> solution) {
-        iBestValue = currentValue();
+        iBestValue = currentValue(solution.getAssignment());
     }
     public void bestRestored(Solution<V,T> solution) {}
     
-    public void addOscillationListener(OscillationListener listener) {
+    public void addOscillationListener(OscillationListener<V,T> listener) {
         iOscillationListeners.add(listener);
     }
     
-    public void removeOscillationListener(OscillationListener listener) {
+    public void removeOscillationListener(OscillationListener<V,T> listener) {
         iOscillationListeners.remove(listener);
     }
     
-    public static interface OscillationListener {
-        public void bestValueChanged(double delta);
+    public static interface OscillationListener<V extends Variable<V, T>, T extends Value<V, T>> {
+        public void bestValueChanged(Solution<V,T> solution, double delta);
     }
 }

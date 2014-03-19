@@ -8,16 +8,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import net.sf.cpsolver.exam.neighbours.ExamSimpleNeighbour;
-import net.sf.cpsolver.ifs.heuristics.NeighbourSelection;
-import net.sf.cpsolver.ifs.model.Neighbour;
-import net.sf.cpsolver.ifs.model.Value;
-import net.sf.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.ifs.solution.Solution;
-import net.sf.cpsolver.ifs.solution.SolutionListener;
-import net.sf.cpsolver.ifs.solver.Solver;
-import net.sf.cpsolver.ifs.util.DataProperties;
-import net.sf.cpsolver.ifs.util.ToolBox;
+import org.cpsolver.exam.neighbours.ExamSimpleNeighbour;
+import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.AssignmentContext;
+import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
+import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.Model;
+import org.cpsolver.ifs.model.Neighbour;
+import org.cpsolver.ifs.model.Value;
+import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.solution.Solution;
+import org.cpsolver.ifs.solution.SolutionListener;
+import org.cpsolver.ifs.solver.Solver;
+import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion;
 import net.sf.cpsolver.itc.heuristics.neighbour.selection.ItcRandomMove;
@@ -91,7 +95,7 @@ import org.apache.log4j.Logger;
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 
-public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, T>> implements NeighbourSelection<V,T>, SolutionListener<V,T>, LazyNeighbourAcceptanceCriterion<V,T> {
+public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, T>> extends NeighbourSelectionWithContext<V,T,ItcSimulatedAnnealing<V,T>.Context> implements SolutionListener<V,T>, LazyNeighbourAcceptanceCriterion<V,T> {
     private static Logger sLog = Logger.getLogger(ItcSimulatedAnnealing.class);
     private static boolean sInfo = sLog.isInfoEnabled();
     private static DecimalFormat sDF2 = new DecimalFormat("0.00");
@@ -103,19 +107,12 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
     private long iTemperatureLength = 0;
     private long iReheatLength = 0;
     private long iRestoreBestLength = 0;
-    private double iTemperature = 0.0;
     private double iTempLengthCoef = 10.0;
     private double iReheatLengthCoef = 10.0;
     private double iRestoreBestLengthCoef = -1;
-    private long iIter = 0;
-    private long iLastImprovingIter = 0;
-    private long iLastReheatIter = 0;
-    private long iLastCoolingIter = 0;
-    private int iAcceptIter[] = new int[] {0,0,0};
     private boolean iStochasticHC = false;
     private int iMoves = 0;
     private double iAbsValue = 0;
-    private long iT0 = -1;
     private boolean iNextHeuristicsOnReheat = false;
     
     private boolean iRelativeAcceptance = true;
@@ -124,7 +121,6 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
     private boolean iRandomSelection = false;
     private boolean iUpdatePoints = false;
     private double iTotalBonus;
-
     
     /**
      * Constructor. Following problem properties are considered:
@@ -177,7 +173,7 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
     
     /** Initialization */
     public void init(Solver<V,T> solver) {
-        iTemperature = iInitialTemperature;
+    	super.init(solver);
         long tl = getTemperatureLength(solver);
         iTemperatureLength = Math.round(iTempLengthCoef*tl);
         iReheatLength = Math.round(iReheatLengthCoef*iTemperatureLength);
@@ -210,46 +206,10 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
         return total;
     }
 
-    private void cool(Solution<V,T> solution) {
-        iTemperature *= iCoolingRate;
-        if (sInfo) {
-            sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
-            sLog.info("Temperature decreased to "+sDF5.format(iTemperature)+" " +
-        		"(#moves="+iMoves+", rms(value)="+sDF2.format(Math.sqrt(iAbsValue/iMoves))+", "+
-        		"accept=-"+sDF2.format(100.0*iAcceptIter[0]/iTemperatureLength)+"/"+sDF2.format(100.0*iAcceptIter[1]/iTemperatureLength)+"/+"+sDF2.format(100.0*iAcceptIter[2]/iTemperatureLength)+"%, " +
-        		(prob(-1)<1.0?"p(-1)="+sDF2.format(100.0*prob(-1))+"%, ":"")+
-        		"p(+1)="+sDF2.format(100.0*prob(1))+"%, "+
-        		"p(+10)="+sDF5.format(100.0*prob(10))+"%)");
-            if (iUpdatePoints)
-                for (NeighbourSelector<V,T> ns: iNeighbourSelectors)
-                    sLog.info("  "+ns+" ("+sDF2.format(ns.getPoints())+" pts, "+sDF2.format(100.0*(iUpdatePoints?ns.getPoints():ns.getBonus())/totalPoints())+"%)");
-            iAcceptIter=new int[] {0,0,0};
-            iMoves = 0; iAbsValue = 0;
-        }
-        iLastCoolingIter=iIter;
-    }
-    
-    private void reheat(Solution<V,T> solution) {
-        iTemperature *= iReheatRate;
-        if (sInfo) {
-            sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
-            sLog.info("Temperature increased to "+sDF5.format(iTemperature)+" "+
-                (prob(-1)<1.0?"p(-1)="+sDF2.format(100.0*prob(-1))+"%, ":"")+
-                "p(+1)="+sDF2.format(100.0*prob(1))+"%, "+
-                "p(+10)="+sDF5.format(100.0*prob(10))+"%, "+
-                "p(+100)="+sDF10.format(100.0*prob(100))+"%)");
-        }
-        iLastReheatIter=iIter;
-    }
-    
-    private void restoreBest(Solution<V,T> solution) {
-        sLog.info("Best restored");
-        iLastImprovingIter=iIter;
-    }
-    
     private Neighbour<V,T> genMove(Solution<V,T> solution) {
+    	Context context = getContext(solution.getAssignment());
         while (true) {
-            if (incIter(solution)) return null;
+            if (context.incIter(solution)) return null;
             NeighbourSelector<V,T> ns = null;
             if (iRandomSelection) {
                 ns = ToolBox.random(iNeighbourSelectors);
@@ -266,46 +226,29 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
         }
     }
     
-    private double prob(double value) {
-        if (iStochasticHC)
-            return 1.0 / (1.0 + Math.exp(value/iTemperature));
-        else
-            return (value<=0.0?1.0:Math.exp(-value/iTemperature));
-    }
-    
     private boolean accept(Solution<V,T> solution, Neighbour<V,T> neighbour) {
         if (neighbour instanceof ItcLazyNeighbour) {
             ((ItcLazyNeighbour<V,T>)neighbour).setAcceptanceCriterion(this);
             return true;
         }
-        double value = (iRelativeAcceptance?neighbour.value():solution.getModel().getTotalValue()+neighbour.value()-solution.getBestValue());
-        double prob = prob(value);
+        Model<V,T> m = solution.getModel();
+        Assignment<V, T> a = solution.getAssignment();
+        double value = (iRelativeAcceptance?neighbour.value(a):m.getTotalValue(a)+neighbour.value(a)-m.getBestValue());
+        double prob = getContext(solution.getAssignment()).prob(value);
         if (prob>=1.0 || ToolBox.random()<prob) {
-            if (sInfo) iAcceptIter[neighbour.value()<0.0?0:neighbour.value()>0.0?2:1]++;
+            if (sInfo) getContext(solution.getAssignment()).accepted(neighbour.value(a)); 
             return true;
         }
         return false;
     }
     
     /** Implementation of {@link net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion} interface */
-    public boolean accept(ItcLazyNeighbour<V,T> neighbour, double value) {
-        double prob = prob(value);
+    public boolean accept(Assignment<V,T> assignment, ItcLazyNeighbour<V,T> neighbour, double value) {
+        double prob = getContext(assignment).prob(value);
         if (prob>=1.0 || ToolBox.random()<prob) {
-            if (sInfo) iAcceptIter[value<0.0?0:value>0.0?2:1]++;
+        	if (sInfo) getContext(assignment).accepted(value);
             return true;
         }
-        return false;
-    }
-    
-    private boolean incIter(Solution<V,T> solution) {
-        if (iT0<0) iT0 = System.currentTimeMillis();
-        iIter++;
-        if (iIter>iLastImprovingIter+iRestoreBestLength) restoreBest(solution);
-        if (iIter>Math.max(iLastReheatIter,iLastImprovingIter)+iReheatLength) {
-            reheat(solution);
-            return iNextHeuristicsOnReheat;
-        }
-        if (iIter>iLastCoolingIter+iTemperatureLength) cool(solution);
         return false;
     }
     
@@ -314,7 +257,7 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
         Neighbour<V,T> neighbour = null;
         while ((neighbour=genMove(solution))!=null) {
             if (sInfo) {
-                iMoves++; iAbsValue += neighbour.value() * neighbour.value();
+                iMoves++; iAbsValue += neighbour.value(solution.getAssignment()) * neighbour.value(solution.getAssignment());
             }
             if (accept(solution,neighbour)) break;
         }
@@ -322,12 +265,95 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
     }
     
     public void bestSaved(Solution<V,T> solution) {
-        iLastImprovingIter = iIter;
+    	getContext(solution.getAssignment()).bestSaved(solution.getModel());
     }
     public void solutionUpdated(Solution<V,T> solution) {}
     public void getInfo(Solution<V,T> solution, Map<String, String> info) {}
     public void getInfo(Solution<V,T> solution, Map<String, String> info, Collection<V> variables) {}
     public void bestCleared(Solution<V,T> solution) {}
     public void bestRestored(Solution<V,T> solution){}
-    
+
+    public class Context implements AssignmentContext {
+        private double iTemperature = 0.0;
+        private long iT0 = -1;
+        private long iIter = 0;
+        private long iLastImprovingIter = 0;
+        private long iLastReheatIter = 0;
+        private long iLastCoolingIter = 0;
+        private int iAcceptIter[] = new int[] {0,0,0};
+
+        private void cool(Solution<V,T> solution) {
+            iTemperature *= iCoolingRate;
+            if (sInfo) {
+                sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
+                sLog.info("Temperature decreased to "+sDF5.format(iTemperature)+" " +
+            		"(#moves="+iMoves+", rms(value)="+sDF2.format(Math.sqrt(iAbsValue/iMoves))+", "+
+            		"accept=-"+sDF2.format(100.0*iAcceptIter[0]/iTemperatureLength)+"/"+sDF2.format(100.0*iAcceptIter[1]/iTemperatureLength)+"/+"+sDF2.format(100.0*iAcceptIter[2]/iTemperatureLength)+"%, " +
+            		(prob(-1)<1.0?"p(-1)="+sDF2.format(100.0*prob(-1))+"%, ":"")+
+            		"p(+1)="+sDF2.format(100.0*prob(1))+"%, "+
+            		"p(+10)="+sDF5.format(100.0*prob(10))+"%)");
+                if (iUpdatePoints)
+                    for (NeighbourSelector<V,T> ns: iNeighbourSelectors)
+                        sLog.info("  "+ns+" ("+sDF2.format(ns.getPoints())+" pts, "+sDF2.format(100.0*(iUpdatePoints?ns.getPoints():ns.getBonus())/totalPoints())+"%)");
+                iAcceptIter=new int[] {0,0,0};
+                iMoves = 0; iAbsValue = 0;
+            }
+            iLastCoolingIter=iIter;
+        }
+        
+        private void reheat(Solution<V,T> solution) {
+            iTemperature *= iReheatRate;
+            if (sInfo) {
+                sLog.info("Iter="+iIter/1000+"k, NonImpIter="+sDF2.format((iIter-iLastImprovingIter)/1000.0)+"k, Speed="+sDF2.format(1000.0*iIter/(System.currentTimeMillis()-iT0))+" it/s");
+                sLog.info("Temperature increased to "+sDF5.format(iTemperature)+" "+
+                    (prob(-1)<1.0?"p(-1)="+sDF2.format(100.0*prob(-1))+"%, ":"")+
+                    "p(+1)="+sDF2.format(100.0*prob(1))+"%, "+
+                    "p(+10)="+sDF5.format(100.0*prob(10))+"%, "+
+                    "p(+100)="+sDF10.format(100.0*prob(100))+"%)");
+            }
+            iLastReheatIter=iIter;
+        }
+        
+        private boolean incIter(Solution<V,T> solution) {
+            if (iT0 < 0) {
+            	iT0 = System.currentTimeMillis();
+            	iTemperature = iInitialTemperature;
+            }
+            iIter++;
+            if (iIter > iLastImprovingIter + iRestoreBestLength) {
+            	restoreBest(solution);
+            }
+            if (iIter > Math.max(iLastReheatIter, iLastImprovingIter) + iReheatLength) {
+                reheat(solution);
+                return iNextHeuristicsOnReheat;
+            }
+            if (iIter > iLastCoolingIter + iTemperatureLength) cool(solution);
+            return false;
+        }
+        
+        private void restoreBest(Solution<V,T> solution) {
+            iLastImprovingIter = iIter;
+            solution.restoreBest();
+        }
+
+        private double prob(double value) {
+            if (iStochasticHC)
+                return 1.0 / (1.0 + Math.exp(value/iTemperature));
+            else
+                return (value<=0.0?1.0:Math.exp(-value/iTemperature));
+        }
+        
+        private void accepted(double value) {
+        	iAcceptIter[value < 0.0 ? 0 : value > 0.0 ? 2 : 1]++;
+        }
+        
+        private void bestSaved(Model<V, T> model) {
+        	iLastImprovingIter = iIter;
+        }
+    }
+
+	@Override
+	public Context createAssignmentContext(Assignment<V, T> assignment) {
+		return new Context();
+	}
 }
