@@ -294,6 +294,7 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
 
         iFronLoadThreshold = Math.max(0, getNrPeriods() - iFrontLoad[1]);
         sLog.info("Front load threshold is "+iFronLoadThreshold+" ("+getPeriod(iFronLoadThreshold)+")");
+        in.close();
         
         return true;
     }

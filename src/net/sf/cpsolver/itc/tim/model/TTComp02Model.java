@@ -22,9 +22,9 @@ import net.sf.cpsolver.itc.ItcModel;
  * <a href='http://www.idsia.ch/Files/ttcomp2002/'>http://www.idsia.ch/Files/ttcomp2002/</a>.
  * <br><br>
  * Problems of this model can be solved using ttcomp02 property file, i.e.,
- * <ul> 
+ * <pre><code>
  * java -Xmx256m -jar itc2007.jar ttcomp02 data\ttcomp02\competition01.tim competition01.sln
- * </ul>
+ * </code></pre>
  * 
  * @version
  * ITC2007 1.0<br>
@@ -55,7 +55,7 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
     /** Constructor */
     public TTComp02Model() {
         super();
-        iContextUpdateType = ContextUpdateType.AfterUnassignedBeforeAssigned;
+        setContextUpdateType(ContextUpdateType.AfterUnassignedBeforeAssigned);
     }
     
     /**

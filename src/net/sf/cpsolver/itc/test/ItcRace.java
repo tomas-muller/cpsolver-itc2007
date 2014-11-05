@@ -82,9 +82,9 @@ import net.sf.cpsolver.itc.test.ItcTestClient.TestInstance;
  * </code>
  * <br><br>
  * Example usage:<br>
- * <ul>
+ * <pre><code>
  * java -cp itc2007.jar -Xmx256m net.sf.cpsolver.itc.test.ItcRace my.properties
- * </ul>
+ * </code></pre>
  * where my.properties is a file containing above properties.
  * 
  * @version

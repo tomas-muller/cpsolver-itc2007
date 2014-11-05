@@ -18,7 +18,6 @@ import org.cpsolver.ifs.util.DataProperties;
 import org.cpsolver.ifs.util.JProf;
 import org.cpsolver.ifs.util.Progress;
 import org.cpsolver.ifs.util.ToolBox;
-
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.Level;
@@ -29,12 +28,12 @@ import org.apache.log4j.PatternLayout;
  * Main class for all three competition tracks.
  * <br><br>
  * Usage:<br>
- * <ul>
+ * <pre><code>
  * java -Xmx256m -jar itc2007.jar problem input output [timeout] [seed]
- * </ul>
+ * </code></pre>
  * Parameters:
  * <ul>
- * <li>problem .. problem either ctt, tim, or exam (configuration file <problem>.properties is used)
+ * <li>problem .. problem either ctt, tim, or exam (configuration file &lt;problem&gt;.properties is used)
  * <ul>
  *  <li>ctt for Curriculum based Course Timetabling (track 3)
  *  <li>tim for Post Enrollment based Course Timetabling (track 2)

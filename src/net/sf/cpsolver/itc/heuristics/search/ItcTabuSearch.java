@@ -151,7 +151,7 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> exte
         for (V variable: model.variables()) {
             T assigned = assignment.getValue(variable);
             double assignedVal = (assigned==null?iConflictWeight:iValueWeight*assigned.toDouble(assignment));
-            for (T value: variable.values()) {
+            for (T value: variable.values(assignment)) {
                 if (value.equals(assigned)) continue;
                 double eval = iValueWeight*value.toDouble(assignment) - assignedVal;
                 if (acceptConflicts) {
@@ -232,7 +232,7 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> exte
         T assigned = assignment.getValue(variable);
         //double assignedVal = (assigned==null?-iConflictWeight:iValueWeight*assigned.toDouble());
         double assignedVal = (assigned==null?iConflictWeight:iValueWeight*assigned.toDouble(assignment));
-        for (T value: variable.values()) {
+        for (T value: variable.values(assignment)) {
             if (value.equals(assigned)) continue;
             Set<T> conflicts = model.conflictValues(assignment, value);
             double eval = iValueWeight*value.toDouble(assignment) - assignedVal;

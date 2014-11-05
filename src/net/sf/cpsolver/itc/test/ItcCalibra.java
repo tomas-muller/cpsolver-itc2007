@@ -71,9 +71,9 @@ import net.sf.cpsolver.itc.test.ItcRace.RaceTestInstance;
  * </code>
  * <br><br>
  * Example usage (calibra.bat to be run by WinCalibra):<br>
- * <ul>
+ * <pre><code>
  * java -cp itc2007.jar -Xmx256m net.sf.cpsolver.itc.test.ItcCalibra
- * </ul>
+ * </code></pre>
  * 
  * @version
  * ITC2007 1.0<br>
@@ -124,6 +124,7 @@ public class ItcCalibra {
             iProperties.setProperty(iParam[i], String.valueOf(iValue[i]));
             sLog.warn("  "+iParam[i]+"="+iValue[i]);
         }
+        r.close();
     }
     
     private String paramNames() {

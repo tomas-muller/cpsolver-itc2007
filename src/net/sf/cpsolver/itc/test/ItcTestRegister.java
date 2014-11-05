@@ -14,9 +14,9 @@ import java.util.TreeSet;
  * The register service listens on the first available port from 1200.
  * <br><br>
  * Example usage:<br>
- * <ul>
+ * <pre><code>
  * java -cp itc2007.jar -Xmx256m net.sf.cpsolver.itc.test.ItcTestRegister
- * </ul>
+ * </code></pre>
  *  
  * @version
  * ITC2007 1.0<br>

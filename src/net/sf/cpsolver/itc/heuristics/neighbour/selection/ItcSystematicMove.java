@@ -77,10 +77,10 @@ public class ItcSystematicMove<V extends Variable<V, T>, T extends Value<V, T>> 
         if (iVarEn==null) {
             iVarEn = new RandomIterator<V>(model.variables(), iRandomOrder);
             iVariable = iVarEn.next();
-            List<Object> v2 = new ArrayList<Object>(iVariable.values().size() + model.variables().size());
+            List<Object> v2 = new ArrayList<Object>(iVariable.values(assignment).size() + model.variables().size());
             if (iAllowSwaps && iVariable instanceof Swapable)
                 v2.addAll(model.variables());
-            v2.addAll(iVariable.values());
+            v2.addAll(iVariable.values(assignment));
             iValEn = new RandomIterator<Object>(v2, iRandomOrder);
         }
         if (!iValEn.hasNext()) {
@@ -88,10 +88,10 @@ public class ItcSystematicMove<V extends Variable<V, T>, T extends Value<V, T>> 
                 iVarEn = new RandomIterator<V>(model.variables(), iRandomOrder);
             }
             iVariable = iVarEn.next();
-            List<Object> v2 = new ArrayList<Object>(iVariable.values().size() + model.variables().size());
+            List<Object> v2 = new ArrayList<Object>(iVariable.values(assignment).size() + model.variables().size());
             if (iAllowSwaps && iVariable instanceof Swapable)
                 v2.addAll(model.variables());
-            v2.addAll(iVariable.values());
+            v2.addAll(iVariable.values(assignment));
             iValEn = new RandomIterator<Object>(v2, iRandomOrder);
         }
         Object object = iValEn.next();

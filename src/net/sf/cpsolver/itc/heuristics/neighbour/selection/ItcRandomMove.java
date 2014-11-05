@@ -49,7 +49,7 @@ public class ItcRandomMove<V extends Variable<V, T>, T extends Value<V, T>> impl
         Model<V,T> model = solution.getModel();
         Assignment<V, T> assignment = solution.getAssignment();
         V variable = ToolBox.random(model.variables());
-        T value = ToolBox.random(variable.values());
+        T value = ToolBox.random(variable.values(assignment));
         T old = assignment.getValue(variable);
         if (value.equals(old)) return null;
         double eval = iValueWeight * value.toDouble(assignment);

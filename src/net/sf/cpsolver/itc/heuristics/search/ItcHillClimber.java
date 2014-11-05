@@ -276,7 +276,7 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> ext
         public int nrNotNull() { return iNrNotNull; }
         /** Number of returned moves with zero improvement of the solution (i.e., {@link Neighbour#value(Assignment)} = 0)*/
         public int nrSideMoves() { return iNrSideMoves; }
-        /** Number of returned improving moves (i.e., {@link Neighbour#value(Assignment)} < 0)*/
+        /** Number of returned improving moves (i.e., {@link Neighbour#value(Assignment)} &lt; 0)*/
         public int nrImprovingMoves() { return iNrImprovingMoves; }
         /** Total time spend in {@link NeighbourSelection#selectNeighbour(Solution)} (in milliseconds) */
         public long time() { return iTime; }

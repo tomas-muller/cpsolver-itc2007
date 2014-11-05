@@ -47,7 +47,7 @@ import org.apache.log4j.Logger;
  * If <i>SimulatedAnnealing.StochasticHC</i> is true, the acceptance probability is computed using
  * stochastic hill climbing criterion, i.e., <code>1.0 / (1.0 + Math.exp(value/temperature))</code>,
  * otherwise it is cumputed using simlated annealing criterion, i.e.,
- * <code>(value<=0.0?1.0:Math.exp(-value/temperature))</code>.
+ * <code>(value&lt;=0.0?1.0:Math.exp(-value/temperature))</code>.
  * If <i>SimulatedAnnealing.RelativeAcceptance</i> neighbour value {@link ExamSimpleNeighbour#value(Assignment)} is taken
  * as the value of the selected neighbour (difference between the new and the current solution, if the
  * neighbour is accepted), otherwise the value is computed as the difference
@@ -193,7 +193,7 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
     private long getTemperatureLength(Solver<V,T> solver) {
         long len = 0;
         for (V variable: solver.currentSolution().getModel().variables())
-            len += variable.values().size();
+            len += variable.values(solver.currentSolution().getAssignment()).size();
         sLog.info("Temperature length "+len);
         return len;
     }

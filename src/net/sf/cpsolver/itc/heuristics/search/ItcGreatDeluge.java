@@ -42,7 +42,7 @@ import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.NeighbourSelector;
  * it is multiplied by GreatDeluge.CoolRate (alternatively, GreatDeluge.CoolRateInv can be 
  * defined, which is GreatDeluge.CoolRate = 1 - (1 / GreatDeluge.CoolRateInv ) ). When
  * a limit GreatDeluge.LowerBoundRate &times; value of the best solution
- * is reached, the bound is increased back to GreatDeluge.UpperBoundRate &times
+ * is reached, the bound is increased back to GreatDeluge.UpperBoundRate &times;
  * value of the best solution.
  * <br><br>
  * If there was no improvement found between the increments of the bound, the new bound is changed to

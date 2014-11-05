@@ -48,7 +48,7 @@ public class ItcNotConflictingMove<V extends Variable<V, T>, T extends Value<V, 
         Model<V,T> model = solution.getModel();
         Assignment<V, T> assignment = solution.getAssignment();
         V variable = ToolBox.random(model.variables());
-        T value = ToolBox.random(variable.values());
+        T value = ToolBox.random(variable.values(assignment));
         if (value.equals(assignment.getValue(variable))) return null;
         if (model.inConflict(assignment, value)) return null;
         return new ItcSimpleNeighbour<V,T>(assignment, variable,value);
