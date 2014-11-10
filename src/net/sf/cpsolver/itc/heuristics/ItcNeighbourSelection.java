@@ -1,7 +1,7 @@
 package net.sf.cpsolver.itc.heuristics;
 
 import org.apache.log4j.Logger;
-
+import org.cpsolver.ifs.algorithms.ParallelConstruction;
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentContext;
 import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
@@ -15,6 +15,7 @@ import org.cpsolver.ifs.model.Variable;
 import org.cpsolver.ifs.solution.Solution;
 import org.cpsolver.ifs.solver.Solver;
 import org.cpsolver.ifs.util.DataProperties;
+
 import net.sf.cpsolver.itc.ItcModel;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber;
 import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch;
@@ -106,6 +107,8 @@ public class ItcNeighbourSelection<V extends Variable<V, T>, T extends Value<V, 
     /** Initialization */
     public void init(Solver<V,T> solver) {
         super.init(solver);
+        if (!solver.hasSingleSolution())
+        	iConstruct = new ParallelConstruction<V, T>(solver.getProperties(), iConstruct);
         iConstruct.init(solver);
         iFirst.init(solver);
         iSecond.init(solver);
