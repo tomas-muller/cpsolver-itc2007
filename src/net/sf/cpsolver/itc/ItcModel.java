@@ -51,7 +51,7 @@ public abstract class ItcModel<V extends Variable<V, T>, T extends Value<V, T>> 
         return assignment.nrAssignedVariables() == variables().size();
     }
     /** Make feasible, executed by {@link ItcTest} after the solver is stopped */
-    public void makeFeasible() {}
+    public void makeFeasible(Assignment<V, T> assignment) {}
     
     public abstract Assignment<V, T> createAssignment(int index, Assignment<V, T> assignment);
 }

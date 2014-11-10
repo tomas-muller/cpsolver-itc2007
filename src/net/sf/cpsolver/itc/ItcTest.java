@@ -286,7 +286,7 @@ public class ItcTest {
             
             Solution solution = solver.currentSolution();
             solution.restoreBest();
-            ((ItcModel)solution.getModel()).makeFeasible();
+            ((ItcModel)solution.getModel()).makeFeasible(solution.getAssignment());
             solution.saveBest();
             
             return output(solver);
@@ -352,7 +352,7 @@ public class ItcTest {
 
                 Solution solution = iSolver.currentSolution();
                 solution.restoreBest();
-                ((ItcModel)solution.getModel()).makeFeasible();
+                ((ItcModel)solution.getModel()).makeFeasible(solution.getAssignment());
                 solution.saveBest();
                 
                 output(iSolver);

@@ -753,7 +753,8 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
     /**
      * Set binary constraint violations weight and direct conflict weight to 5000
      */
-    public void makeFeasible() {
+    @Override
+    public void makeFeasible(Assignment<ExExam, ExPlacement> assignment) {
         setBinaryViolationWeight(5000);
         setDirectConflictWeight(5000);
     }
