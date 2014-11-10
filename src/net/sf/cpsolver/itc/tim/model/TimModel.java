@@ -44,7 +44,7 @@ public class TimModel extends TTComp02Model {
     
     /** Weight of violated precedence constraints */
     public static int sPrecedenceViolationWeight = 0;
-    /** Weight of events withou assigned room */
+    /** Weight of events without assigned room */
     public static int sNoRoomWeight = 0;
     
     /** Constructor */
@@ -60,6 +60,14 @@ public class TimModel extends TTComp02Model {
         return iAllowProhibitedTime.booleanValue();
     }
 
+    private Boolean iAllowPrecedenceViolations = null;
+    /** True if it is allowed to break precedence constraints (Tim.AllowPrecedenceViolations must be set to true) */
+    public boolean isAllowPrecedenceViolations() {
+        if (iAllowPrecedenceViolations==null)
+        	iAllowPrecedenceViolations = getProperties().getPropertyBoolean("Tim.AllowPrecedenceViolations", Boolean.TRUE);
+        return iAllowPrecedenceViolations.booleanValue();
+    }
+    
     private Boolean iAllowNoRoom = null;
     /** True if it is allowed to not assign an event a room (Tim.AllowNoRoom must be set to true) */
     public boolean isAllowNoRoom() {
@@ -132,7 +140,7 @@ public class TimModel extends TTComp02Model {
         for (TimEvent ev1: variables()) {
             for (TimEvent ev2: variables()) {
                 if (1==Integer.parseInt(in.readLine())) {
-                    TimPrecedence precedence = new TimPrecedence(ev1,ev2);
+                    TimPrecedence precedence = new TimPrecedence(!isAllowPrecedenceViolations(), ev1,ev2);
                     iPrecedences.add(precedence);
                     addConstraint(precedence);
                     ev1.successors().add(ev2);
@@ -338,6 +346,7 @@ public class TimModel extends TTComp02Model {
      * Also, unassign events that have no rooms or violate precedence constraints (unless
      * system property unassign is set to false).
      */
+    @Override
     public void makeFeasible(Assignment<TimEvent, TimLocation> assignment) {
         sNoRoomWeight = 5000;
         sPrecedenceViolationWeight = 5000;

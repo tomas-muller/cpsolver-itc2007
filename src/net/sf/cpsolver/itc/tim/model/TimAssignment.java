@@ -72,6 +72,9 @@ public class TimAssignment extends AssignmentAbstract<TimEvent, TimLocation> {
             if (value.room() != null) value.room().assigned(this, iteration, value);
             for (TimStudent student: variable.students())
                 student.assigned(this, iteration, value);
+            if (!((TimModel)model).isAllowPrecedenceViolations())
+            	for (TimPrecedence precedence: variable.getPrecedences())
+            		precedence.assigned(this, iteration, value);
 
             model.afterAssigned(this, iteration, value);
         }

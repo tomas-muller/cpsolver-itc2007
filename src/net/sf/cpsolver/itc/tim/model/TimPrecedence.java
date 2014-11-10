@@ -39,10 +39,13 @@ public class TimPrecedence extends BinaryConstraint<TimEvent, TimLocation> {
      * @param first first event
      * @param second second event
      */
-    public TimPrecedence(TimEvent first, TimEvent second) {
+    public TimPrecedence(boolean hard, TimEvent first, TimEvent second) {
         super();
+        iIsHard = hard;
         addVariable(first);
         addVariable(second);
+        first.getPrecedences().add(this);
+        second.getPrecedences().add(this);
     }
 
     /**
@@ -104,7 +107,7 @@ public class TimPrecedence extends BinaryConstraint<TimEvent, TimLocation> {
     }
     
     public void assigned(Assignment<TimEvent, TimLocation> assignment, long iteration, TimLocation value) {
-        if (isHard() && inConflict(assignment, value)) {
+        if (iIsHard && inConflict(assignment, value)) {
             if (iConstraintListeners!=null) {
                 Set<TimLocation> confs = new HashSet<TimLocation>(); confs.add(assignment.getValue(another(value.variable())));
                 assignment.unassign(iteration, another(value.variable()));
@@ -117,6 +120,11 @@ public class TimPrecedence extends BinaryConstraint<TimEvent, TimLocation> {
     }
         
     public void unassigned(long iteration, TimLocation value) {
+    }
+    
+    @Override
+    public String getName() {
+    	return first().getName() + " before " + second().getName();
     }
     
 }

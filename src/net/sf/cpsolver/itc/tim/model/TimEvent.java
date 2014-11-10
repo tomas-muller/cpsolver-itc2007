@@ -51,6 +51,7 @@ public class TimEvent extends Variable<TimEvent, TimLocation> implements Swapabl
 	private boolean[] iAvailable = new boolean[45];
 	
 	private Set<TimEvent> iPredecessors = new HashSet<TimEvent>(), iSuccessors = new HashSet<TimEvent>();
+	private List<TimPrecedence> iPrecedences = new ArrayList<TimPrecedence>();
 	
 	/**
 	 * Constructor
@@ -109,7 +110,7 @@ public class TimEvent extends Variable<TimEvent, TimLocation> implements Swapabl
 		}
 		setValues(values);
 	}
-
+	
 	/** String representation */
 	public String toString(Assignment<TimEvent, TimLocation> assignment) {
 	    String pre = "";
@@ -314,4 +315,11 @@ public class TimEvent extends Variable<TimEvent, TimLocation> implements Swapabl
             student.unassigned(assignment, iteration, location);
     }
     */
+    
+    /**
+     * Precedence constraints of this event
+     */
+    public List<TimPrecedence> getPrecedences() {
+    	return iPrecedences;
+    }
 }
