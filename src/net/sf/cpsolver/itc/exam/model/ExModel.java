@@ -18,11 +18,14 @@ import java.util.StringTokenizer;
 import java.util.TreeSet;
 
 import org.apache.log4j.Logger;
-
 import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.InheritedAssignment;
 import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
 import org.cpsolver.ifs.model.BinaryConstraint;
 import org.cpsolver.ifs.model.Constraint;
+import org.cpsolver.ifs.solution.Solution;
+
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -48,7 +51,7 @@ import net.sf.cpsolver.itc.ItcModel;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExModel extends ItcModel<ExExam, ExPlacement> {
+public class ExModel extends ItcModel<ExExam, ExPlacement> implements CanInheritContext<ExExam, ExPlacement, AssignmentConstraintContext<ExExam, ExPlacement>> {
     private static Logger sLog = Logger.getLogger(ExModel.class);
     private List<ExPeriod> iPeriods = new ArrayList<ExPeriod>();
     private List<ExRoom> iRooms = new ArrayList<ExRoom>();
@@ -666,7 +669,7 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
                 int twoInRowThisExam = 0, twoInDayThisExam = 0, widerSpreadThisExam = 0;
                 for (ExStudent s: exam.getStudents()) {
                     for (ExPeriod p=firstPeriod(); p!=null; p=p.next()) {
-                        if (!s.hasExam(assignment, p)) continue;
+                        if (!s.getContext(assignment).hasExam(p.getIndex())) continue;
                         if (p.getIndex()<=placement.getPeriod().getIndex()) continue;
                         int dist = Math.abs(p.getIndex()-placement.getPeriodIndex());
                         if (p.getDay()==placement.getPeriod().getDay()) {
@@ -769,6 +772,18 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
     		for (ExPlacement value: assignment.assignedValues())
     			assigned(assignment, value);
     	}
+    	
+    	public Context(Assignment<ExExam, ExPlacement> assignment, Context parent) {
+    		iFronLoadPenalty = parent.iFronLoadPenalty;
+    		iPeriodPenalty = parent.iPeriodPenalty;
+    		iRoomPenalty = parent.iRoomPenalty;
+    		iTwoInARowPenalty = parent.iTwoInARowPenalty;
+    		iTwoInADayPenalty = parent.iTwoInADayPenalty;
+    		iWiderSpreadPenalty = parent.iWiderSpreadPenalty;
+    		iMixedDurationsPenalty = parent.iMixedDurationsPenalty;
+    		iBinaryViolations = parent.iBinaryViolations;
+    		iNrDirectConflicts = parent.iNrDirectConflicts;
+    	}
 
 		@Override
 		public void assigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement placement) {
@@ -819,5 +834,22 @@ public class ExModel extends ItcModel<ExExam, ExPlacement> {
 	@Override
 	public Assignment<ExExam, ExPlacement> createAssignment(int index, Assignment<ExExam, ExPlacement> assignment) {
 		return new ExAssignment(this, index, assignment);
+	}
+	
+	@Override
+    public InheritedAssignment<ExExam, ExPlacement> createInheritedAssignment(Solution<ExExam, ExPlacement> solution, int index) {
+        return new ExInheritedAssignment(solution, index);
+    }
+
+	@Override
+	public AssignmentConstraintContext<ExExam, ExPlacement> inheritAssignmentContext(Assignment<ExExam, ExPlacement> assignment,
+			AssignmentConstraintContext<ExExam, ExPlacement> parentContext) {
+		return new Context(assignment, (Context)parentContext);
+	}
+	
+	@Override
+	public boolean inConflict(Assignment<ExExam, ExPlacement> assignment, ExPlacement value) {
+		if (value.getRoom().inConflict(assignment, value)) return true;
+		return super.inConflict(assignment, value);
 	}
 }

@@ -382,6 +382,12 @@ public class TimModel extends TTComp02Model {
     	public TimContext(Assignment<TimEvent, TimLocation> assignment) {
     		super(assignment);
     	}
+    	
+    	public TimContext(Assignment<TimEvent, TimLocation> assignment, TimContext parent) {
+            super(assignment, parent);
+            iPrecedenceViolations = parent.iPrecedenceViolations;
+            iNoRoomViolations = parent.iNoRoomViolations;
+    	}
 
         /**
          * Update counters on assignment of an event
@@ -420,5 +426,10 @@ public class TimModel extends TTComp02Model {
 	@Override
 	public AssignmentConstraintContext<TimEvent, TimLocation> createAssignmentContext(Assignment<TimEvent, TimLocation> assignment) {
 		return new TimContext(assignment);
+	}
+	
+	@Override
+	public TTComp02Context inheritAssignmentContext(Assignment<TimEvent, TimLocation> assignment, TTComp02Context parentContext) {
+        return new TimContext(assignment, (TimContext)parentContext);
 	}
 }

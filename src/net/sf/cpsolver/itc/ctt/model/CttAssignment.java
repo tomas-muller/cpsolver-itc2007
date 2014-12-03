@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.AssignmentAbstract;
+import org.cpsolver.ifs.assignment.context.AssignmentContextHolder;
 import org.cpsolver.ifs.assignment.context.DefaultParallelAssignmentContextHolder;
 import org.cpsolver.ifs.model.Model;
 
@@ -34,17 +35,28 @@ import org.cpsolver.ifs.model.Model;
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class CttAssignment extends AssignmentAbstract<CttLecture, CttPlacement> {
-	private CttModel iModel;
-	private int iIndex;
-	private int iNrAssigned = 0;
+	protected CttModel iModel;
+	protected int iIndex;
+	protected int iNrAssigned = 0;
+	protected CttPlacement[] iAssignment = null;
+	protected CttAssignment iParent = null;
 	
 	public CttAssignment(CttModel model, int index, Assignment<CttLecture, CttPlacement> assignment) {
 		super(new DefaultParallelAssignmentContextHolder<CttLecture, CttPlacement>(index));
 		iIndex = index;
 		iModel = model;
-		if (assignment != null)
-            for (CttPlacement value: assignment.assignedValues())
-                setValueInternal(0, value.variable(), value);
+		iParent = (CttAssignment) assignment;
+		if (iParent == null) {
+			iAssignment = new CttPlacement[model.variables().size()];
+			iNrAssigned = 0;
+		} else {
+			iAssignment = Arrays.copyOf(((CttAssignment)iParent).toArray(), model.variables().size());
+			iNrAssigned = iParent.nrAssignedVariables();
+		}
+	}
+	
+	protected CttAssignment(AssignmentContextHolder<CttLecture, CttPlacement> contextHolder) {
+		super(contextHolder);
 	}
 	
 	@Override
@@ -97,35 +109,16 @@ public class CttAssignment extends AssignmentAbstract<CttLecture, CttPlacement> 
 		return assigned;
 	}
 
-    protected CttPlacement[] getAssignments(CttLecture variable) {
-        synchronized (variable) {
-            CttPlacement[] assignments = (CttPlacement[])variable.getExtra();
-            if (assignments == null) {
-                assignments = (CttPlacement[])new CttPlacement[Math.max(10, 1 + iIndex)];
-                variable.setExtra(assignments);
-            } else if (assignments.length <= iIndex) {
-                assignments = Arrays.copyOf(assignments, 10 + iIndex);
-                variable.setExtra(assignments);
-            }
-            return assignments;
-        }
-    }
-    
 	@Override
-    @SuppressWarnings("deprecation")
     protected CttPlacement getValueInternal(CttLecture variable) {
-    	if (iIndex == 1)
-    		return variable.getAssignment();
-        return getAssignments(variable)[iIndex];
+        // return (CttPlacement) variable.getAssignments()[iIndex];
+		return iAssignment[variable.getIndex()];
     }
     
 	@Override
-    @SuppressWarnings("deprecation")
     protected void setValueInternal(long iteration, CttLecture variable, CttPlacement value) {
-    	if (iIndex == 1)
-    		variable.setAssignment(value);
-    	else
-    		getAssignments(variable)[iIndex] = value;
+    	//variable.getAssignments()[iIndex] = value;
+    	iAssignment[variable.getIndex()] = value;
         if (value == null)
         	iNrAssigned --;
         else
@@ -141,4 +134,12 @@ public class CttAssignment extends AssignmentAbstract<CttLecture, CttPlacement> 
     public int nrAssignedVariables() {
         return iNrAssigned;
     }
+    
+    public CttPlacement[] toArray() {
+    	return iAssignment;
+    }
+
+	public Assignment<CttLecture, CttPlacement> getParentAssignment() {
+		return iParent;
+	}
 }

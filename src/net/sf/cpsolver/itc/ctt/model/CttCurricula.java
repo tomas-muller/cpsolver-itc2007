@@ -1,12 +1,14 @@
 package net.sf.cpsolver.itc.ctt.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
 import org.cpsolver.ifs.assignment.context.ConstraintWithContext;
 import org.cpsolver.ifs.model.ConstraintListener;
 
@@ -148,7 +150,7 @@ public class CttCurricula {
      * same curricula are placed at the same time.
      *
      */
-    public class CurriculaConstraint extends ConstraintWithContext<CttLecture, CttPlacement, CttCurricula.Table> {
+    public class CurriculaConstraint extends ConstraintWithContext<CttLecture, CttPlacement, CttCurricula.Table> implements CanInheritContext<CttLecture, CttPlacement, CttCurricula.Table> {
         
         /** Constructor */
         public CurriculaConstraint() {
@@ -212,9 +214,14 @@ public class CttCurricula {
 		public Table createAssignmentContext(Assignment<CttLecture, CttPlacement> assignment) {
 			return new Table(assignment);
 		}
+
+		@Override
+		public Table inheritAssignmentContext(Assignment<CttLecture, CttPlacement> assignment, Table parentContext) {
+			return new Table(assignment, parentContext);
+		}
     }
     
-    private class Table implements AssignmentConstraintContext<CttLecture, CttPlacement> {
+    public class Table implements AssignmentConstraintContext<CttLecture, CttPlacement> {
         public CttPlacement[] iPlacement;
         
         public Table(Assignment<CttLecture, CttPlacement> assignment) {
@@ -226,6 +233,10 @@ public class CttCurricula {
 				if (p != null) assigned(assignment, p);
 			}
 		}
+        
+        public Table(Assignment<CttLecture, CttPlacement> assignment, Table parent) {
+        	iPlacement = Arrays.copyOf(parent.iPlacement, parent.iPlacement.length);
+        }
 
 		@Override
 		public void assigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement p) {

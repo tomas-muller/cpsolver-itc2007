@@ -2,12 +2,13 @@ package net.sf.cpsolver.itc.tim.neighbours;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.LazySwap;
 import org.cpsolver.ifs.model.Neighbour;
 import org.cpsolver.ifs.solution.Solution;
 import org.cpsolver.ifs.solver.Solver;
 import org.cpsolver.ifs.util.DataProperties;
 import org.cpsolver.ifs.util.ToolBox;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
+
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection;
 import net.sf.cpsolver.itc.tim.model.TTComp02Model;
@@ -92,7 +93,7 @@ public class TimSwapMove implements NeighbourSelection<TimEvent, TimLocation>, H
                         TimLocation conf = student.getLocation(assignment, location.time());
                         if (conf!=null && !conf.variable().equals(confEvt)) return null;
                     }
-                    return new ItcLazySwap<TimEvent, TimLocation>(assignment,
+                    return new LazySwap<TimEvent, TimLocation>(
                             new TimLocation(event, time, room),
                             new TimLocation(confEvt, location.time(), location.room()));
                 }

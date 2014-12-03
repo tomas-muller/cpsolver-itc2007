@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.AssignmentAbstract;
+import org.cpsolver.ifs.assignment.context.AssignmentContextHolder;
 import org.cpsolver.ifs.assignment.context.DefaultParallelAssignmentContextHolder;
 import org.cpsolver.ifs.model.Model;
 
@@ -34,17 +35,28 @@ import org.cpsolver.ifs.model.Model;
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class TimAssignment extends AssignmentAbstract<TimEvent, TimLocation> {
-	private Model<TimEvent, TimLocation> iModel;
-	private int iIndex;
-	private int iNrAssigned = 0;
+	protected Model<TimEvent, TimLocation> iModel;
+	protected int iIndex;
+	protected int iNrAssigned = 0;
+	protected TimLocation[] iAssignment = null;
+	protected TimAssignment iParent = null;
 	
 	public TimAssignment(Model<TimEvent, TimLocation> model, int index, Assignment<TimEvent, TimLocation> assignment) {
 		super(new DefaultParallelAssignmentContextHolder<TimEvent, TimLocation>(index));
 		iIndex = index;
 		iModel = model;
-		if (assignment != null)
-            for (TimLocation value: assignment.assignedValues())
-                setValueInternal(0, value.variable(), value);
+		iParent = (TimAssignment) assignment;
+		if (iParent == null) {
+			iAssignment = new TimLocation[model.variables().size()];
+			iNrAssigned = 0;
+		} else {
+			iAssignment = Arrays.copyOf(((TimAssignment)iParent).toArray(), model.variables().size());
+			iNrAssigned = iParent.nrAssignedVariables();
+		}
+	}
+	
+	protected TimAssignment(AssignmentContextHolder<TimEvent, TimLocation> contextHolder) {
+		super(contextHolder);
 	}
 	
 	@Override
@@ -98,35 +110,14 @@ public class TimAssignment extends AssignmentAbstract<TimEvent, TimLocation> {
 		return assigned;
 	}
 
-    protected TimLocation[] getAssignments(TimEvent variable) {
-        synchronized (variable) {
-            TimLocation[] assignments = (TimLocation[])variable.getExtra();
-            if (assignments == null) {
-                assignments = (TimLocation[])new TimLocation[Math.max(10, 1 + iIndex)];
-                variable.setExtra(assignments);
-            } else if (assignments.length <= iIndex) {
-                assignments = Arrays.copyOf(assignments, 10 + iIndex);
-                variable.setExtra(assignments);
-            }
-            return assignments;
-        }
-    }
-    
 	@Override
-    @SuppressWarnings("deprecation")
     protected TimLocation getValueInternal(TimEvent variable) {
-    	if (iIndex == 1)
-    		return variable.getAssignment();
-        return getAssignments(variable)[iIndex];
+		return iAssignment[variable.getIndex()];
     }
     
 	@Override
-    @SuppressWarnings("deprecation")
     protected void setValueInternal(long iteration, TimEvent variable, TimLocation value) {
-    	if (iIndex == 1)
-    		variable.setAssignment(value);
-    	else
-    		getAssignments(variable)[iIndex] = value;
+		iAssignment[variable.getIndex()] = value;
         if (value == null)
         	iNrAssigned --;
         else
@@ -142,4 +133,12 @@ public class TimAssignment extends AssignmentAbstract<TimEvent, TimLocation> {
     public int nrAssignedVariables() {
         return iNrAssigned;
     }
+    
+    public TimLocation[] toArray() {
+    	return iAssignment;
+    }
+
+	public Assignment<TimEvent, TimLocation> getParentAssignment() {
+		return iParent;
+	}
 }

@@ -1,6 +1,10 @@
 package net.sf.cpsolver.itc.heuristics;
 
+import java.lang.reflect.Array;
+import java.util.Collection;
+
 import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.InheritedAssignment;
 import org.cpsolver.ifs.heuristics.VariableSelection;
 import org.cpsolver.ifs.model.Model;
 import org.cpsolver.ifs.model.Value;
@@ -8,6 +12,7 @@ import org.cpsolver.ifs.model.Variable;
 import org.cpsolver.ifs.solution.Solution;
 import org.cpsolver.ifs.solver.Solver;
 import org.cpsolver.ifs.util.DataProperties;
+import org.cpsolver.ifs.util.ToolBox;
 
 /**
  * Unassigned variable selection. The "biggest" variable (using {@link Variable#compareTo(Object)})
@@ -44,13 +49,41 @@ public class ItcUnassignedVariableSelection<V extends Variable<V, T>, T extends 
     
     /** Variable selection */
     public V selectVariable(Solution<V,T> solution) {
-        Model<V,T> model = solution.getModel();
+    	Model<V,T> model = solution.getModel();
         Assignment<V, T> assignment = solution.getAssignment();
-        if (assignment.nrAssignedVariables() == model.variables().size()) return null; 
-        V variable = null;
-        for (V v: assignment.unassignedVariables(model)) {
-            if (variable==null || v.compareTo(variable)<0) variable = v;
+        if (assignment.nrAssignedVariables() == model.variables().size()) return null;
+        int index = solution.getAssignment().getIndex();
+        Collection<V> unassigned = assignment.unassignedVariables(model);
+        if (solution.getAssignment() instanceof InheritedAssignment) {
+            if (index < 0 || unassigned.size() < index) {
+            	return ToolBox.random(unassigned);
+            } else if (index <= 1) {
+                V variable = null;
+                for (V v: unassigned) {
+                    if (variable==null || v.compareTo(variable)<0) variable = v;
+                }
+                return variable;
+            } else {
+            	@SuppressWarnings("unchecked")
+    			V[] adepts = (V[])Array.newInstance(Variable.class, index);
+            	for (V v: unassigned) {
+            		for (int i = 0; i < adepts.length; i++) {
+            			V x = adepts[i];
+            			if (x == null) {
+            				adepts[i] = v; break;
+            			} else if (v.compareTo(x) < 0) {
+            				adepts[i] = v; v = x;
+            			}
+            		}
+            	}
+            	return adepts[index - 1];
+            }        	
+        } else {
+            V variable = null;
+            for (V v: unassigned) {
+                if (variable==null || v.compareTo(variable)<0) variable = v;
+            }
+            return variable;
         }
-        return variable;
     }
 }

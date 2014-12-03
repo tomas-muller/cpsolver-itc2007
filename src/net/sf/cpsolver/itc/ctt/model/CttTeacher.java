@@ -1,10 +1,12 @@
 package net.sf.cpsolver.itc.ctt.model;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
 import org.cpsolver.ifs.assignment.context.ConstraintWithContext;
 import org.cpsolver.ifs.model.ConstraintListener;
 
@@ -85,7 +87,7 @@ public class CttTeacher {
      * lectures that are taught by the same teacher are not placed
      * at the same day and time.
      */
-    public class TeacherConstraint extends ConstraintWithContext<CttLecture, CttPlacement, CttTeacher.Table> {
+    public class TeacherConstraint extends ConstraintWithContext<CttLecture, CttPlacement, CttTeacher.Table> implements CanInheritContext<CttLecture, CttPlacement, CttTeacher.Table> {
 
     	/** Constructor */
         public TeacherConstraint() {
@@ -164,8 +166,13 @@ public class CttTeacher {
 		public Table createAssignmentContext(Assignment<CttLecture, CttPlacement> assignment) {
 			return new Table(assignment);
 		}
-    }
 
+		@Override
+		public Table inheritAssignmentContext(Assignment<CttLecture, CttPlacement> assignment, Table parentContext) {
+			return new Table(assignment, parentContext);
+		}
+    }
+    
     private class Table implements AssignmentConstraintContext<CttLecture, CttPlacement> {
         private CttPlacement[] iPlacement;
         
@@ -178,6 +185,10 @@ public class CttTeacher {
 				if (p != null) assigned(assignment, p);
 			}
 		}
+        
+        public Table(Assignment<CttLecture, CttPlacement> assignment, Table parent) {
+        	iPlacement = Arrays.copyOf(parent.iPlacement, parent.iPlacement.length);
+        }
 
 		@Override
 		public void assigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement p) {

@@ -2,17 +2,18 @@ package net.sf.cpsolver.itc.ctt.neighbours;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.LazySwap;
 import org.cpsolver.ifs.model.Neighbour;
 import org.cpsolver.ifs.solution.Solution;
 import org.cpsolver.ifs.solver.Solver;
 import org.cpsolver.ifs.util.DataProperties;
 import org.cpsolver.ifs.util.ToolBox;
+
 import net.sf.cpsolver.itc.ctt.model.CttCurricula;
 import net.sf.cpsolver.itc.ctt.model.CttLecture;
 import net.sf.cpsolver.itc.ctt.model.CttModel;
 import net.sf.cpsolver.itc.ctt.model.CttPlacement;
 import net.sf.cpsolver.itc.ctt.model.CttRoom;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.HillClimberSelection;
@@ -101,7 +102,7 @@ public class CttSwapMove implements NeighbourSelection<CttLecture, CttPlacement>
                             CttPlacement conf = curricula.getConstraint().getPlacement(assignment, placement.getDay(), placement.getSlot());
                             if (conf!=null && !conf.variable().equals(lecture)) continue room;
                         }
-                        return new ItcLazySwap<CttLecture, CttPlacement>(assignment,
+                        return new LazySwap<CttLecture, CttPlacement>(
                                 new CttPlacement(lecture, room, day, slot),
                                 new CttPlacement(confLect, placement.getRoom(), placement.getDay(), placement.getSlot()));
                     }

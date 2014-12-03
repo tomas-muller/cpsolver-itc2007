@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.log4j.Logger;
+import net.sf.cpsolver.itc.heuristics.neighbour.ItcSimpleNeighbour;
 
+import org.apache.log4j.Logger;
 import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.InheritedAssignment;
 import org.cpsolver.ifs.assignment.context.AssignmentContext;
 import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
 import org.cpsolver.ifs.extension.ConflictStatistics;
@@ -17,7 +19,6 @@ import org.cpsolver.ifs.heuristics.NeighbourSelection;
 import org.cpsolver.ifs.heuristics.ValueSelection;
 import org.cpsolver.ifs.model.Model;
 import org.cpsolver.ifs.model.Neighbour;
-import org.cpsolver.ifs.model.SimpleNeighbour;
 import org.cpsolver.ifs.model.Value;
 import org.cpsolver.ifs.model.Variable;
 import org.cpsolver.ifs.solution.Solution;
@@ -112,6 +113,10 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> exte
                 iStat = (ConflictStatistics<V,T>)extension;
     }
     
+    public void setValueWeight(double weight) {
+    	iValueWeight = weight;
+    }
+    
     /**
      * An element that is to be used to populate (and check) tabu list
      * @param value given value (to be assigned to its variable)
@@ -199,7 +204,7 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> exte
         if (tabu.size() > 0) 
             tabu.add(tabuElement(bestVal));
 
-        return new SimpleNeighbour<V,T>(bestVal.variable(), bestVal);        
+        return new ItcSimpleNeighbour<V,T>(solution.getAssignment(), bestVal.variable(), bestVal);        
     }
     
     /**
@@ -268,6 +273,12 @@ public class ItcTabuSearch<V extends Variable<V, T>, T extends Value<V, T>> exte
             sLog.debug("  [tabu] "+bestVal+" ("+(old==null?"":"was="+old+", ")+"val="+bestEval+(conflicts.isEmpty()?"":", conf="+(wconf+conflicts.size())+"/"+conflicts)+")");
         }
         
+        if (solution.getAssignment() instanceof InheritedAssignment && iStat != null) {
+        	for (T conflict: model.conflictValues(assignment, bestVal)) {
+        		iStat.variableUnassigned(solution.getIteration(), conflict, bestVal);
+        	}
+        }
+                
         if (tabu.size() > 0) tabu.add(tabuElement(bestVal));
         
         return bestVal;

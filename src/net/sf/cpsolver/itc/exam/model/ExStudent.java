@@ -47,41 +47,71 @@ public abstract class ExStudent extends ConstraintWithContext<ExExam, ExPlacemen
     }
     
     /** List of exams that this student has at the given period */
-    public abstract Set<ExExam> getExams(Assignment<ExExam, ExPlacement> assignment, int period);
-    /** List of exams that this student has at the given period */
-    public Set<ExExam> getExams(Assignment<ExExam, ExPlacement> assignment, ExPeriod period) {
-        return getExams(assignment, period.getIndex());
+    @Deprecated
+    public Set<ExExam> getExams(Assignment<ExExam, ExPlacement> assignment, int period) {
+    	return getContext(assignment).getExams(period);
     }
+    
+    /** List of exams that this student has at the given period */
+    @Deprecated
+    public Set<ExExam> getExams(Assignment<ExExam, ExPlacement> assignment, ExPeriod period) {
+    	return getContext(assignment).getExams(period.getIndex());
+    }
+    
     /** List of exams that this student has at the given period */
     public String getExamStr(Assignment<ExExam, ExPlacement> assignment, ExPeriod period) {
         StringBuffer sb = new StringBuffer();
-        for (Iterator<ExExam> i=getExams(assignment, period.getIndex()).iterator();i.hasNext();) {
+        for (Iterator<ExExam> i=getContext(assignment).getExams(period.getIndex()).iterator();i.hasNext();) {
             sb.append(i.next().getId());
             sb.append(i.hasNext()?",":"");
         }
         return sb.toString();
     }
+    
     /** True, if this student has one or more exams at the given period */
-    public abstract boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period);
+    @Deprecated
+    public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period) {
+    	return getContext(assignment).hasExam(period);
+    }
     /** True, if this student has one or more exams at the given period */
+    @Deprecated
     public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, ExPeriod period) {
-        return hasExam(assignment, period.getIndex());
+    	return getContext(assignment).hasExam(period.getIndex());
     }
     /** True, if this student has one or more exams at the given period (given exam excluded) */
-    public abstract boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude);
+    @Deprecated
+    public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude) {
+    	return getContext(assignment).hasExam(period, exclude);
+    }
+    
     /** True, if this student has one or more exams at the given period (given exam excluded) */
+    @Deprecated
     public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, ExPeriod period, ExExam exclude) {
-        return hasExam(assignment, period.getIndex(), exclude);
+    	return getContext(assignment).hasExam(period.getIndex(), exclude);
     }
+    
     /** Number of exams that this student has at the given period */
-    public abstract int nrExams(Assignment<ExExam, ExPlacement> assignment, int period);
+    @Deprecated
+    public int nrExams(Assignment<ExExam, ExPlacement> assignment, int period) {
+    	return getContext(assignment).nrExams(period);
+    }
+    
     /** Number of exams that this student has at the given period */
-    public int nrExams(Assignment<ExExam, ExPlacement> assignment, ExPeriod period) { return nrExams(assignment, period.getIndex()); }
+    @Deprecated
+    public int nrExams(Assignment<ExExam, ExPlacement> assignment, ExPeriod period) {
+    	return getContext(assignment).nrExams(period.getIndex());
+    }
+    
     /** Number of exams that this student has at the given period (given exam excluded) */
-    public abstract int nrExams(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude);
+    @Deprecated
+    public int nrExams(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude) {
+    	return getContext(assignment).nrExams(period, exclude);
+    }
+    
     /** Number of exams that this student has at the given period (given exam excluded) */
+    @Deprecated
     public int nrExams(Assignment<ExExam, ExPlacement> assignment, ExPeriod period, ExExam exclude) {
-        return nrExams(assignment, period.getIndex(), exclude);
+    	return getContext(assignment).nrExams(period.getIndex(), exclude);
     }
 
     /** 
@@ -192,7 +222,10 @@ public abstract class ExStudent extends ConstraintWithContext<ExExam, ExPlacemen
     
     public interface Context extends AssignmentConstraintContext<ExExam, ExPlacement> {
     	public ExPlacement getPlacement(int period);
+    	public boolean hasExam(int period);
+    	public boolean hasExam(int period, ExExam exclude);
     	public Set<ExExam> getExams(int period);
 		public int nrExams(int period);
+    	public int nrExams(int period, ExExam exclude);
     }
 }

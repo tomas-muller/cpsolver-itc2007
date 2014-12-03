@@ -63,13 +63,14 @@ public class CttCurriculumCompactnessMove implements NeighbourSelection<CttLectu
         int cx = ToolBox.random(model.getCurriculas().size());
         for (int c=0;c<model.getCurriculas().size();c++) {
             CttCurricula curricula = model.getCurriculas().get((c+cx)%model.getCurriculas().size());
+            CttCurricula.Table table = curricula.getConstraint().getContext(assignment);
             List<CttPlacement> adepts = new ArrayList<CttPlacement>();
             for (int d=0;d<model.getNrDays();d++) {
                 for (int s=0;s<model.getNrSlotsPerDay();s++) {
-                    CttPlacement p = curricula.getConstraint().getPlacement(assignment, d, s);
+                    CttPlacement p = table.getPlacement(d, s);
                     if (p==null) continue;
-                    CttPlacement prev = (s==0?null:curricula.getConstraint().getPlacement(assignment, d, s-1));
-                    CttPlacement next = (s+1==model.getNrSlotsPerDay()?null:curricula.getConstraint().getPlacement(assignment, d, s+1));
+                    CttPlacement prev = (s==0?null:table.getPlacement(d, s-1));
+                    CttPlacement next = (s+1==model.getNrSlotsPerDay()?null:table.getPlacement(d, s+1));
                     if (next==null && prev==null) {
                         adepts.add(p);
                     }

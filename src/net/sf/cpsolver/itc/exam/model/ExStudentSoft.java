@@ -1,9 +1,11 @@
 package net.sf.cpsolver.itc.exam.model;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
 
 /**
  * Representation of a student. Direct student conflicts are allowed
@@ -29,7 +31,7 @@ import org.cpsolver.ifs.assignment.Assignment;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExStudentSoft extends ExStudent {
+public class ExStudentSoft extends ExStudent implements CanInheritContext<ExExam, ExPlacement, ExStudentSoft.Context> {
     
     /**
      * Constructor
@@ -73,31 +75,6 @@ public class ExStudentSoft extends ExStudent {
     	getContext(assignment).unassigned(assignment, p);
     }
     
-    /** List of exams that this student has at the given period */
-    public Set<ExExam> getExams(Assignment<ExExam, ExPlacement> assignment, int period) {
-        return getContext(assignment).getExams(period);
-    }
-    /** True, if this student has one or more exams at the given period */
-    public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period) {
-        return getContext(assignment).nrExams(period) > 0;
-    }
-    /** Number of exams that this student has at the given period */
-    public int nrExams(Assignment<ExExam, ExPlacement> assignment, int period) {
-        return getContext(assignment).nrExams(period);
-    }
-    /** True, if this student has one or more exams at the given period (given exam excluded)*/
-    public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude) {
-        if (exclude == null) return hasExam(assignment, period);
-        ExStudent.Context context = getContext(assignment);
-        return (context.nrExams(period) > (context.getExams(period).contains(exclude) ? 1 : 0));
-    }
-    /** Number of exams that this student has at the given period (given exam excluded)*/
-    public int nrExams(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude) {
-        if (exclude == null) return nrExams(assignment, period);
-        ExStudent.Context context = getContext(assignment);
-        return context.nrExams(period) - (context.getExams(period).contains(exclude) ? 1 : 0);
-    }
-    
     public void assigned(long iteration, ExPlacement value) {
     }
         
@@ -123,17 +100,32 @@ public class ExStudentSoft extends ExStudent {
                 		assigned(assignment, p);
                 }
     	}
+    	
+    	@SuppressWarnings("unchecked")
+		private Context(ExModel m, Assignment<ExExam, ExPlacement> assignment, Context parent) {
+    		synchronized (parent.iExams) {
+        		iNrExams = Arrays.copyOf(parent.iNrExams, m.getNrPeriods());
+                iExams = new HashSet[m.getNrPeriods()];
+                for (int i=0;i<m.getNrPeriods();i++) {
+                    iExams[i]=new HashSet<ExExam>(parent.iExams[i]);
+                }
+			}
+    	}
 
 		@Override
 		public void assigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement p) {
-	        if (iExams[p.getPeriodIndex()].add(p.variable()))
-	            iNrExams[p.getPeriodIndex()]++;
+			synchronized (iExams) {
+		        if (iExams[p.getPeriodIndex()].add(p.variable()))
+		            iNrExams[p.getPeriodIndex()]++;
+			}
 		}
 
 		@Override
 		public void unassigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement p) {
-	        if (iExams[p.getPeriodIndex()].remove(p.variable()))
-	            iNrExams[p.getPeriodIndex()]--;
+			synchronized (iExams) {
+				if (iExams[p.getPeriodIndex()].remove(p.variable()))
+					iNrExams[p.getPeriodIndex()]--;
+			}
 		}
 		
 		@Override
@@ -150,11 +142,33 @@ public class ExStudentSoft extends ExStudent {
 		public ExPlacement getPlacement(int period) {
 			return null;
 		}
+
+		@Override
+		public boolean hasExam(int period) {
+			return iNrExams[period] > 0;
+		}
+
+		@Override
+		public boolean hasExam(int period, ExExam exclude) {
+			if (exclude == null) return iNrExams[period] > 0;
+	        return (iNrExams[period] > (iExams[period].contains(exclude) ? 1 : 0));
+		}
+
+		@Override
+		public int nrExams(int period, ExExam exclude) {
+			if (exclude == null) return iNrExams[period];
+	        return (iExams[period].contains(exclude) ? iNrExams[period] - 1 : iNrExams[period]);
+		}
     }
 
 	@Override
 	public Context createAssignmentContext(Assignment<ExExam, ExPlacement> assignment) {
 		return new Context((ExModel)getModel(), assignment);
+	}
+
+	@Override
+	public Context inheritAssignmentContext(Assignment<ExExam, ExPlacement> assignment, Context parentContext) {
+		return new Context((ExModel)getModel(), assignment, parentContext);
 	}
 
 }

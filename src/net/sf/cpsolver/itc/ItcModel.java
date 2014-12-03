@@ -54,4 +54,9 @@ public abstract class ItcModel<V extends Variable<V, T>, T extends Value<V, T>> 
     public void makeFeasible(Assignment<V, T> assignment) {}
     
     public abstract Assignment<V, T> createAssignment(int index, Assignment<V, T> assignment);
+    
+    @Override
+    public String toString(Assignment<V, T> a) {
+    	return "V:"+a.nrAssignedVariables()+"/"+variables().size()+", P:"+Math.round(getTotalValue(a))+" ("+csvLine(a)+")";
+    }
 }

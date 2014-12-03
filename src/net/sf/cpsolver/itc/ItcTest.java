@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.List;
@@ -250,24 +252,27 @@ public class ItcTest {
                     solution.addSolutionListener(listener);
                 return solution;
             }
+        	@Override
+            public boolean hasSingleSolution() {
+        		return sConfig.getPropertyBoolean("ParallelSolver.SingleSolution", false);
+        	}
         };
 		Solution solution = new Solution(model, model.createAssignment(0, null));
         solver.setInitalSolution(solution);
+        solution.getModel().createAssignmentContexts(solution.getAssignment(), false);
         
         solver.currentSolution().addSolutionListener(new SolutionListener() {
-            public void solutionUpdated(Solution solution) {}
+            public void solutionUpdated(Solution solution) {
+            	//sLog.info("**CURRENT["+solution.getIteration()+"]** " + solution);
+            }
             public void getInfo(Solution solution, Map info) {}
             public void getInfo(Solution solution, Map info, Collection variables) {}
             public void bestCleared(Solution solution) {}
             public void bestSaved(Solution solution) {
-                ItcModel m = (ItcModel)solution.getModel();
-                Assignment a = solution.getAssignment();
-                sLog.info("**BEST["+solution.getIteration()+"]** V:"+a.nrAssignedVariables()+"/"+m.variables().size()+", P:"+Math.round(m.getTotalValue(a))+" ("+m.csvLine(a)+")");
+                sLog.info("**BEST["+solution.getIteration()+"]** " + solution);
             }
             public void bestRestored(Solution solution) {
-                ItcModel m = (ItcModel)solution.getModel();
-                Assignment a = solution.getAssignment();
-            	sLog.info("##RESTORED["+solution.getIteration()+"]## V:"+a.nrAssignedVariables()+"/"+m.variables().size()+", P:"+Math.round(m.getTotalValue(a))+" ("+m.csvLine(a)+")");
+            	sLog.info("##RESTORED["+solution.getIteration()+"]## " + solution);
             }
         });
         
@@ -287,7 +292,7 @@ public class ItcTest {
             Solution solution = solver.currentSolution();
             solution.restoreBest();
             ((ItcModel)solution.getModel()).makeFeasible(solution.getAssignment());
-            solution.saveBest();
+            // solution.saveBest();
             
             return output(solver);
         } catch (Exception e) {
@@ -305,7 +310,7 @@ public class ItcTest {
             sLog.error("No best solution found.");
             return null;
         }
-        solution.restoreBest();
+        // solution.restoreBest();
         
         sLog.info("Best solution:"+ToolBox.dict2string(solution.getExtendedInfo(),1));
         
@@ -325,6 +330,11 @@ public class ItcTest {
             ItcModel m = (ItcModel)solution.getModel();
             Assignment a = solution.getAssignment();
             DecimalFormat df = new DecimalFormat("0.00");
+            double cpu = 0.0;
+            OperatingSystemMXBean bean = ManagementFactory.getOperatingSystemMXBean();
+            if (bean instanceof com.sun.management.OperatingSystemMXBean) {
+            	cpu = ((com.sun.management.OperatingSystemMXBean)bean).getProcessCpuTime() / 1e9;
+            }
             w.println(
                     sSeed+","+
                     sTimeOut+","+
@@ -332,7 +342,10 @@ public class ItcTest {
                     solution.getBestIteration()+","+
                     Math.round(m.getTotalValue(solution.getAssignment()) + 5000 * a.nrUnassignedVariables(m))+","+
                     model.csvLine(a) + "," +
-                    model.getProperties().getPropertyInt("Parallel.NrSolvers", 4));
+                    model.getProperties().getPropertyInt("Parallel.NrSolvers", 4) +
+                    (solver.hasSingleSolution() ? "s": "p") +
+                    (solver.hasSingleSolution() && model.getProperties().getPropertyBoolean("ParallelSolver.SingleSolutionQueue", true) ? "q" : "") + "," +
+                    df.format(solution.getIteration() / solution.getTime()) + "," + df.format(cpu));
             w.flush(); w.close();
         }
         
@@ -353,7 +366,7 @@ public class ItcTest {
                 Solution solution = iSolver.currentSolution();
                 solution.restoreBest();
                 ((ItcModel)solution.getModel()).makeFeasible(solution.getAssignment());
-                solution.saveBest();
+                // solution.saveBest();
                 
                 output(iSolver);
             } catch (Exception e) {

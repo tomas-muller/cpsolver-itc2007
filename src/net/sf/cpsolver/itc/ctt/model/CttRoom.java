@@ -1,10 +1,12 @@
 package net.sf.cpsolver.itc.ctt.model;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
 import org.cpsolver.ifs.assignment.context.ConstraintWithContext;
 import org.cpsolver.ifs.model.ConstraintListener;
 
@@ -91,7 +93,7 @@ public class CttRoom {
     /** Room constraint. This hard constraint ensures that no two lectures
      * are placed into this room at the same time. 
      */ 
-    public class RoomConstraint extends ConstraintWithContext<CttLecture, CttPlacement, CttRoom.Table> {
+    public class RoomConstraint extends ConstraintWithContext<CttLecture, CttPlacement, CttRoom.Table> implements CanInheritContext<CttLecture, CttPlacement, CttRoom.Table> {
         
         /** Constructor */
         public RoomConstraint() {
@@ -173,6 +175,11 @@ public class CttRoom {
 		public Table createAssignmentContext(Assignment<CttLecture, CttPlacement> assignment) {
 			return new Table(assignment);
 		}
+
+		@Override
+		public Table inheritAssignmentContext(Assignment<CttLecture, CttPlacement> assignment, Table parentContext) {
+			return new Table(assignment, parentContext);
+		}
     }
     
     private class Table implements AssignmentConstraintContext<CttLecture, CttPlacement> {
@@ -186,6 +193,10 @@ public class CttRoom {
 				if (p.getRoom().equals(CttRoom.this))
 					assigned(assignment, p);
 		}
+        
+        public Table(Assignment<CttLecture, CttPlacement> assignment, Table parent) {
+        	iPlacement = Arrays.copyOf(parent.iPlacement, parent.iPlacement.length);
+        }
 
 		@Override
 		public void assigned(Assignment<CttLecture, CttPlacement> assignment, CttPlacement p) {

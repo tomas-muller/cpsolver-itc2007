@@ -1,10 +1,12 @@
 package net.sf.cpsolver.itc.tim.model;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
 import org.cpsolver.ifs.assignment.context.ConstraintWithContext;
 import org.cpsolver.ifs.model.Constraint;
 import org.cpsolver.ifs.model.ConstraintListener;
@@ -34,7 +36,7 @@ import org.cpsolver.ifs.model.ConstraintListener;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class TimStudent extends ConstraintWithContext<TimEvent, TimLocation, TimStudent.Context> {
+public class TimStudent extends ConstraintWithContext<TimEvent, TimLocation, TimStudent.Context> implements CanInheritContext<TimEvent, TimLocation, TimStudent.Context> {
 
 	/**
      * Constructor
@@ -132,6 +134,10 @@ public class TimStudent extends ConstraintWithContext<TimEvent, TimLocation, Tim
             		iTable[location.time()] = location;
             }
     	}
+    	
+    	public Context(Assignment<TimEvent, TimLocation> assignment, Context parent) {
+    		iTable = Arrays.copyOf(parent.iTable, 45);
+    	}
 
 		@Override
 		public void assigned(Assignment<TimEvent, TimLocation> assignment, TimLocation location) {
@@ -184,5 +190,10 @@ public class TimStudent extends ConstraintWithContext<TimEvent, TimLocation, Tim
 	@Override
 	public Context createAssignmentContext(Assignment<TimEvent, TimLocation> assignment) {
 		return new Context(assignment);
+	}
+
+	@Override
+	public Context inheritAssignmentContext(Assignment<TimEvent, TimLocation> assignment, Context parentContext) {
+		return new Context(assignment, parentContext);
 	}
 }

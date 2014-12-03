@@ -7,13 +7,13 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.AssignmentComparable;
+import org.cpsolver.ifs.model.LazySwap;
 import org.cpsolver.ifs.model.Neighbour;
 import org.cpsolver.ifs.model.Variable;
 import org.cpsolver.ifs.util.ToolBox;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
+
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
 
 /**
@@ -270,7 +270,7 @@ public class TimEvent extends Variable<TimEvent, TimLocation> implements Swapabl
         if (r2.isEmpty() && !((TTComp02Model)e1.getModel()).isAllowNoRoom()) return null;
         TimLocation nl1 = new TimLocation(e1, l2.time(), (TimRoom)ToolBox.random(r1));
         TimLocation nl2 = new TimLocation(e2, l1.time(), (TimRoom)ToolBox.random(r2));
-        return new ItcLazySwap<TimEvent, TimLocation>(assignment, nl1, nl2); 
+        return new LazySwap<TimEvent, TimLocation>(nl1, nl2); 
     }
     
     /** Minimal possible starting time (first available slot combined with min start time of all predecessors) */

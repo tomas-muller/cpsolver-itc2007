@@ -4,9 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.model.LazySwap;
 import org.cpsolver.ifs.model.Neighbour;
 import org.cpsolver.ifs.model.Variable;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
+
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
 
 /**
@@ -37,6 +38,7 @@ import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
 public class CttLecture extends Variable<CttLecture, CttPlacement> implements Swapable<CttLecture, CttPlacement> {
     private int iIdx;
     private CttCourse iCourse = null;
+    private int iHashCode;
     
     /** Constructor
      * @param course course to which this lecture belongs
@@ -54,6 +56,7 @@ public class CttLecture extends Variable<CttLecture, CttPlacement> implements Sw
             curricula.getConstraint().addVariable(this);
         setValues(computeValues());
         getModel().addVariable(this);
+        iHashCode = toString().hashCode();
     }
     
     /** Return course to which this lecture belong */
@@ -102,7 +105,7 @@ public class CttLecture extends Variable<CttLecture, CttPlacement> implements Sw
     
     /** Hash code */
     public int hashCode() {
-        return toString().hashCode();
+        return iHashCode;
     }
     
     /** Compare two lectures, return the harder one. That is the one with more curriculas, or smaller domain/constraint ratio. */
@@ -142,7 +145,7 @@ public class CttLecture extends Variable<CttLecture, CttPlacement> implements Sw
         }
         CttPlacement np1 = new CttPlacement(this, p2.getRoom(), p2.getDay(), p2.getSlot());
         CttPlacement np2 = new CttPlacement(lecture, p1.getRoom(), p1.getDay(), p1.getSlot());
-        return new ItcLazySwap<CttLecture, CttPlacement>(assignment, np1, np2);
+        return new LazySwap<CttLecture, CttPlacement>(np1, np2);
         /*
         double value = 0;
         //value += np1.extraPenalty() + np2.extraPenalty() - p1.extraPenalty() - p2.extraPenalty();

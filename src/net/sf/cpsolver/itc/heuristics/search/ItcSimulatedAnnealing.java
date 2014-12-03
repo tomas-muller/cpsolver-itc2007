@@ -13,17 +13,18 @@ import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentContext;
 import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
 import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.LazyNeighbour;
 import org.cpsolver.ifs.model.Model;
 import org.cpsolver.ifs.model.Neighbour;
 import org.cpsolver.ifs.model.Value;
 import org.cpsolver.ifs.model.Variable;
+import org.cpsolver.ifs.model.LazyNeighbour.LazyNeighbourAcceptanceCriterion;
 import org.cpsolver.ifs.solution.Solution;
 import org.cpsolver.ifs.solution.SolutionListener;
 import org.cpsolver.ifs.solver.Solver;
 import org.cpsolver.ifs.util.DataProperties;
 import org.cpsolver.ifs.util.ToolBox;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion;
+
 import net.sf.cpsolver.itc.heuristics.neighbour.selection.ItcRandomMove;
 import net.sf.cpsolver.itc.heuristics.neighbour.selection.ItcSwapMove;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.NeighbourSelector;
@@ -227,8 +228,8 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
     }
     
     private boolean accept(Solution<V,T> solution, Neighbour<V,T> neighbour) {
-        if (neighbour instanceof ItcLazyNeighbour) {
-            ((ItcLazyNeighbour<V,T>)neighbour).setAcceptanceCriterion(this);
+        if (neighbour instanceof LazyNeighbour) {
+            ((LazyNeighbour<V,T>)neighbour).setAcceptanceCriterion(this);
             return true;
         }
         Model<V,T> m = solution.getModel();
@@ -243,7 +244,7 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
     }
     
     /** Implementation of {@link net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion} interface */
-    public boolean accept(Assignment<V,T> assignment, ItcLazyNeighbour<V,T> neighbour, double value) {
+    public boolean accept(Assignment<V,T> assignment, LazyNeighbour<V,T> neighbour, double value) {
         double prob = getContext(assignment).prob(value);
         if (prob>=1.0 || ToolBox.random()<prob) {
         	if (sInfo) getContext(assignment).accepted(value);
@@ -281,7 +282,7 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
         private long iLastReheatIter = 0;
         private long iLastCoolingIter = 0;
         private int iAcceptIter[] = new int[] {0,0,0};
-
+        
         private void cool(Solution<V,T> solution) {
             iTemperature *= iCoolingRate;
             if (sInfo) {
@@ -314,20 +315,26 @@ public class ItcSimulatedAnnealing<V extends Variable<V, T>, T extends Value<V, 
             iLastReheatIter=iIter;
         }
         
-        private boolean incIter(Solution<V,T> solution) {
+        protected boolean canCoolOrRehear(Solution<V, T> solution) {
+        	return !hasContextOverride() || solution.getAssignment().getIndex() <= 1;
+        }
+        
+        private synchronized boolean incIter(Solution<V,T> solution) {
             if (iT0 < 0) {
             	iT0 = System.currentTimeMillis();
             	iTemperature = iInitialTemperature;
             }
             iIter++;
-            if (iIter > iLastImprovingIter + iRestoreBestLength) {
-            	restoreBest(solution);
+            if (canCoolOrRehear(solution)) {
+                if (iIter > iLastImprovingIter + iRestoreBestLength) {
+                	restoreBest(solution);
+                }
+                if (iIter > Math.max(iLastReheatIter, iLastImprovingIter) + iReheatLength) {
+                    reheat(solution);
+                    return iNextHeuristicsOnReheat;
+                }
+                if (iIter > iLastCoolingIter + iTemperatureLength) cool(solution);
             }
-            if (iIter > Math.max(iLastReheatIter, iLastImprovingIter) + iReheatLength) {
-                reheat(solution);
-                return iNextHeuristicsOnReheat;
-            }
-            if (iIter > iLastCoolingIter + iTemperatureLength) cool(solution);
             return false;
         }
         

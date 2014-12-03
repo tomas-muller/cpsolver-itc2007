@@ -1,9 +1,11 @@
 package net.sf.cpsolver.itc.exam.model;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
 import org.cpsolver.ifs.model.ConstraintListener;
 
 /**
@@ -30,7 +32,7 @@ import org.cpsolver.ifs.model.ConstraintListener;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExStudentHard extends ExStudent {
+public class ExStudentHard extends ExStudent implements CanInheritContext<ExExam, ExPlacement, ExStudentHard.Context> {
     
     /**
      * Constructor
@@ -98,34 +100,7 @@ public class ExStudentHard extends ExStudent {
     public ExPlacement getPlacement(Assignment<ExExam, ExPlacement> assignment, ExPeriod period) {
         return getPlacement(assignment, period.getIndex());
     }
-    /**
-     * Return exams that are assigned to the given period
-     */
-    public Set<ExExam> getExams(Assignment<ExExam, ExPlacement> assignment, int period) {
-        Set<ExExam> set = new HashSet<ExExam>();
-        ExPlacement p = getPlacement(assignment, period);
-        if (p != null) set.add(p.variable());
-        return set;
-    }
-    
-    /** True, if this student has one or more exams at the given period */
-    public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period) {
-    	return getPlacement(assignment, period) != null;
-    }
-    /** True, if this student has one or more exams at the given period (given exam excluded) */
-    public boolean hasExam(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude) {
-    	ExPlacement p = getPlacement(assignment, period);
-    	return p != null && !p.variable().equals(exclude);
-    }
-    /** Number of exams that this student has at the given period */
-    public int nrExams(Assignment<ExExam, ExPlacement> assignment, int period) {
-        return (hasExam(assignment, period)?1:0);
-    }
-    /** Number of exams that this student has at the given period (given exam excluded)*/
-    public int nrExams(Assignment<ExExam, ExPlacement> assignment, int period, ExExam exclude) {
-        return (hasExam(assignment, period,exclude)?1:0);
-    }
-    
+
     public class Context implements ExStudent.Context {
         private ExPlacement[] iTable = null;
         
@@ -139,6 +114,10 @@ public class ExStudentHard extends ExStudent {
                 	if (p != null)
                 		assigned(assignment, p);
                 }
+        }
+        
+        private Context(ExModel m, Assignment<ExExam, ExPlacement> assignment, Context parent) {
+        	iTable = Arrays.copyOf(parent.iTable, m.getNrPeriods());
         }
 
 		@Override
@@ -167,10 +146,32 @@ public class ExStudentHard extends ExStudent {
 		public int nrExams(int period) {
 			return iTable[period] != null ? 1 : 0;
 		}
+
+		@Override
+		public boolean hasExam(int period) {
+			return iTable[period] != null;
+		}
+
+		@Override
+		public boolean hasExam(int period, ExExam exclude) {
+			ExPlacement p = iTable[period];
+	    	return p != null && !p.variable().equals(exclude);
+		}
+
+		@Override
+		public int nrExams(int period, ExExam exclude) {
+			ExPlacement p = iTable[period];
+			return p != null && !p.variable().equals(exclude) ? 1 : 0;
+		}
     }
 
 	@Override
 	public Context createAssignmentContext(Assignment<ExExam, ExPlacement> assignment) {
 		return new Context((ExModel)getModel(), assignment);
+	}
+
+	@Override
+	public Context inheritAssignmentContext(Assignment<ExExam, ExPlacement> assignment, Context parentContext) {
+		return new Context((ExModel)getModel(), assignment, parentContext);
 	}
 }

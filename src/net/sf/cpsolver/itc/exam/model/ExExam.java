@@ -8,14 +8,14 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.model.BinaryConstraint;
 import org.cpsolver.ifs.model.Constraint;
+import org.cpsolver.ifs.model.LazySwap;
 import org.cpsolver.ifs.model.Neighbour;
 import org.cpsolver.ifs.model.Variable;
 import org.cpsolver.ifs.util.ToolBox;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazySwap;
+
 import net.sf.cpsolver.itc.heuristics.neighbour.ItcSwap.Swapable;
 
 /**
@@ -225,7 +225,7 @@ public class ExExam extends Variable<ExExam, ExPlacement> implements Swapable<Ex
                     if (constraint.inConflict(assignment, np2)) return null;
                 }
             }
-            return new ItcLazySwap<ExExam, ExPlacement>(assignment, np1, np2); 
+            return new LazySwap<ExExam, ExPlacement>(np1, np2); 
         }
         ExRoom r1 = p1.getRoom();
         ExRoom r2 = p2.getRoom();
@@ -235,10 +235,10 @@ public class ExExam extends Variable<ExExam, ExPlacement> implements Swapable<Ex
         if (ex2.isRoomExclusive() && r1.getExams(assignment, p1.getPeriod()).size()>1) return null;
         if (!model.areDirectConflictsAllowed() && p1.getPeriodIndex()!=p2.getPeriodIndex()) {
             for (ExStudent s: ex1.getStudents()) {
-                if (s.hasExam(assignment, p2.getPeriod(),ex2)) return null;
+                if (s.getContext(assignment).hasExam(p2.getPeriodIndex(), ex2)) return null;
             }
             for (ExStudent s: ex2.getStudents()) {
-                if (s.hasExam(assignment, p1.getPeriod(),ex1)) return null;
+                if (s.getContext(assignment).hasExam(p1.getPeriodIndex(), ex1)) return null;
             }
         }
         ExPlacement np1 = new ExPlacement(ex1, p2.getPeriod(), p2.getRoom());
@@ -253,7 +253,7 @@ public class ExExam extends Variable<ExExam, ExPlacement> implements Swapable<Ex
                 if (constraint.inConflict(assignment, np2)) return null;
             }
         }
-        return new ItcLazySwap<ExExam, ExPlacement>(assignment, np1, np2); 
+        return new LazySwap<ExExam, ExPlacement>(np1, np2); 
     }
     
     /** Compare two exams for equality */

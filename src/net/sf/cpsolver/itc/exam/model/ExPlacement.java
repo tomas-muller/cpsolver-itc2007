@@ -90,9 +90,10 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
         if (!prev && !next) return 0;
         int penalty = 0;
         for (ExStudent student: variable().getStudents()) {
-            if (m.areDirectConflictsAllowed() && student.nrExams(assignment, getPeriod(), exam)>0) continue;
-            if (next && student.hasExam(assignment, nextPeriod,exam)) penalty++;
-            if (prev && student.hasExam(assignment, prevPeriod,exam)) penalty++;
+        	ExStudent.Context cx = student.getContext(assignment);
+            if (m.areDirectConflictsAllowed() && cx.nrExams(getPeriod().getIndex(), exam)>0) continue;
+            if (next && cx.hasExam(nextPeriod.getIndex(), exam)) penalty++;
+            if (prev && cx.hasExam(prevPeriod.getIndex(), exam)) penalty++;
         }
         return penalty;
     }
@@ -103,8 +104,9 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
         ExModel m = (ExModel)exam.getModel();
         if (!m.areDirectConflictsAllowed()) return 0;
         int conflicts = 0;
-        for (ExStudent student: variable().getStudents())
-            if (student.nrExams(assignment, getPeriod(), exam)>0) conflicts++;
+        for (ExStudent student: variable().getStudents()) {
+            if (student.getContext(assignment).nrExams(getPeriod().getIndex(), exam)>0) conflicts++;
+        }
         return conflicts;
     }
 
@@ -119,13 +121,14 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
         if (!prev && !next) return 0;
         int penalty = 0;
         for (ExStudent student: variable().getStudents()) {
-            if (m.areDirectConflictsAllowed() && student.nrExams(assignment, getPeriod(), exam)>0) continue;
+        	ExStudent.Context cx = student.getContext(assignment);
+            if (m.areDirectConflictsAllowed() && cx.nrExams(getPeriod().getIndex(), exam)>0) continue;
             if (prev) 
                 for (ExPeriod p=prevPeriod;p!=null && p.getDay()==getPeriod().getDay();p=p.prev())
-                    if (student.hasExam(assignment, p,exam)) penalty++;
+                    if (cx.hasExam(p.getIndex(), exam)) penalty++;
             if (next)
                 for (ExPeriod p=nextPeriod;p!=null && p.getDay()==getPeriod().getDay();p=p.next())
-                    if (student.hasExam(assignment, p,exam)) penalty++; 
+                    if (cx.hasExam(p.getIndex(), exam)) penalty++; 
         }
         return penalty;
     }
@@ -136,11 +139,13 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
         ExModel m = (ExModel)exam.getModel();
         int penalty = 0;
         for (ExStudent student: variable().getStudents()) {
-            if (m.areDirectConflictsAllowed() && student.nrExams(assignment, getPeriod(), exam)>0) continue;
+        	ExStudent.Context cx = student.getContext(assignment);
+        	
+            if (m.areDirectConflictsAllowed() && cx.nrExams(getPeriod().getIndex(), exam)>0) continue;
             for (ExPeriod p=getPeriod().next();p!=null && p.getIndex()-getPeriod().getIndex()<=m.getPeriodSpreadLength(); p=p.next())
-                if (student.hasExam(assignment, p,exam)) penalty++;
+                if (cx.hasExam(p.getIndex(), exam)) penalty++;
             for (ExPeriod p=getPeriod().prev();p!=null && getPeriod().getIndex()-p.getIndex()<=m.getPeriodSpreadLength(); p=p.prev())
-                if (student.hasExam(assignment, p,exam)) penalty++;
+                if (cx.hasExam(p.getIndex(), exam)) penalty++;
         }
         return penalty;
     }
@@ -158,9 +163,10 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
         boolean next2 = nextPeriod2!=null && getPeriod().getDay()==nextPeriod2.getDay(); 
         int penalty = 0;
         for (ExStudent student: variable().getStudents()) {
+        	ExStudent.Context cx = student.getContext(assignment);
 
             if (m.areDirectConflictsAllowed()) {
-                Set<ExExam> exams = student.getExams(assignment, getPeriod());
+                Set<ExExam> exams = cx.getExams(getPeriod().getIndex());
                 int nrExams = exams.size() + (exams.contains(exam)?0:1);
                 if (nrExams>1) {
                     penalty+=m.getDirectConflictWeight();
@@ -169,19 +175,19 @@ public class ExPlacement extends Value<ExExam, ExPlacement> implements TabuEleme
             }
 
             for (ExPeriod p=getPeriod().next();p!=null && p.getIndex()-getPeriod().getIndex()<=m.getPeriodSpreadLength(); p=p.next())
-                if (student.hasExam(assignment, p,exam)) penalty++;
+                if (cx.hasExam(p.getIndex(), exam)) penalty++;
             for (ExPeriod p=getPeriod().prev();p!=null && getPeriod().getIndex()-p.getIndex()<=m.getPeriodSpreadLength(); p=p.prev())
-                if (student.hasExam(assignment, p,exam)) penalty++;
+                if (cx.hasExam(p.getIndex(), exam)) penalty++;
             
-            if (prev && student.hasExam(assignment, prevPeriod,exam)) penalty+=m.getTwoInARowWeight();
-            if (next && student.hasExam(assignment, nextPeriod,exam)) penalty+=m.getTwoInARowWeight();
+            if (prev && cx.hasExam(prevPeriod.getIndex(), exam)) penalty+=m.getTwoInARowWeight();
+            if (next && cx.hasExam(nextPeriod.getIndex(), exam)) penalty+=m.getTwoInARowWeight();
 
             if (prev2) 
                 for (ExPeriod p=prevPeriod2;p!=null && p.getDay()==getPeriod().getDay();p=p.prev())
-                    if (student.hasExam(assignment, p,exam)) penalty+=m.getTwoInADayWeight(); 
+                    if (cx.hasExam(p.getIndex(), exam)) penalty+=m.getTwoInADayWeight(); 
             if (next2)
                 for (ExPeriod p=nextPeriod2;p!=null && p.getDay()==getPeriod().getDay();p=p.next())
-                    if (student.hasExam(assignment, p,exam)) penalty+=m.getTwoInADayWeight();
+                    if (cx.hasExam(p.getIndex(), exam)) penalty+=m.getTwoInADayWeight();
         }
         return penalty;
     }

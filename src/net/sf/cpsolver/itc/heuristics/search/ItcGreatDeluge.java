@@ -9,12 +9,13 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
-
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentContext;
 import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
 import org.cpsolver.ifs.extension.Extension;
 import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.LazyNeighbour;
+import org.cpsolver.ifs.model.LazyNeighbour.LazyNeighbourAcceptanceCriterion;
 import org.cpsolver.ifs.model.Model;
 import org.cpsolver.ifs.model.Neighbour;
 import org.cpsolver.ifs.model.Value;
@@ -24,10 +25,9 @@ import org.cpsolver.ifs.solution.SolutionListener;
 import org.cpsolver.ifs.solver.Solver;
 import org.cpsolver.ifs.util.DataProperties;
 import org.cpsolver.ifs.util.ToolBox;
+
 import net.sf.cpsolver.itc.heuristics.ItcParameterWeightOscillation;
 import net.sf.cpsolver.itc.heuristics.ItcParameterWeightOscillation.OscillationListener;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion;
 import net.sf.cpsolver.itc.heuristics.neighbour.selection.ItcNotConflictingMove;
 import net.sf.cpsolver.itc.heuristics.neighbour.selection.ItcSwapMove;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber.NeighbourSelector;
@@ -201,14 +201,14 @@ public class ItcGreatDeluge<V extends Variable<V, T>, T extends Value<V, T>> ext
     }
     
     private boolean accept(Solution<V,T> solution, Neighbour<V,T> neighbour) {
-        if (neighbour instanceof ItcLazyNeighbour) {
-            ((ItcLazyNeighbour<V,T>)neighbour).setAcceptanceCriterion(this);
+        if (neighbour instanceof LazyNeighbour) {
+            ((LazyNeighbour<V,T>)neighbour).setAcceptanceCriterion(this);
             return true;
         } else return (neighbour.value(solution.getAssignment())<=0 || solution.getModel().getTotalValue(solution.getAssignment())+neighbour.value(solution.getAssignment())<= getContext(solution.getAssignment()).getBound());
     }
     
     /** Implementation of {@link net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion} interface */
-    public boolean accept(Assignment<V,T> assignment, ItcLazyNeighbour<V,T> neighbour, double value) {
+    public boolean accept(Assignment<V,T> assignment, LazyNeighbour<V,T> neighbour, double value) {
         return (value <= 0 || neighbour.getModel().getTotalValue(assignment) <= getContext(assignment).getBound());
     }
     
@@ -262,7 +262,11 @@ public class ItcGreatDeluge<V extends Variable<V, T>, T extends Value<V, T>> ext
             iAcceptedMoves = iMoves = 0;
         }
         
-        protected boolean incIter(Solution<V, T> solution) {
+        protected boolean canCheckBound(Solution<V, T> solution) {
+        	return !hasContextOverride() || solution.getAssignment().getIndex() <= 1;
+        }
+        
+        protected synchronized boolean incIter(Solution<V, T> solution) {
         	double best = solution.getModel().getBestValue();
             if (iIter < 0) {
                 iIter = 0; iLastImprovingIter = 0;
@@ -276,21 +280,25 @@ public class ItcGreatDeluge<V extends Variable<V, T>, T extends Value<V, T>> ext
             if (sInfo && iIter % 100000 == 0) {
                 info(solution);
             }
-            if (iIter % 1000 == 0 && iBound > Math.max(best + 2.0, Math.pow(iUpperBoundRate, 1 + iNrIdle) * best)) {
-            	iBound = Math.max(best + 2.0, Math.pow(iUpperBoundRate, iNrIdle) * best);
-            	if (solution.getModel().getTotalValue(solution.getAssignment()) > iBound)
-            		solution.restoreBest();
-            }
-            if (iBound < Math.pow(iLowerBoundRate, 1 + iNrIdle) * best) {
-                iNrIdle++;
-                sLog.info(" -<["+iNrIdle+"]>- ");
-                iBound = Math.max(best + 2.0, Math.pow(iUpperBoundRate, iNrIdle) * best);
-                iAlterBound = iAlterBoundOnReheat;
-                if (iNextHeuristicsOnReheat) return true;
-            }
-            if (iAlterBound) {
-            	iBound = Math.max(best + 2.0, Math.pow(iUpperBoundRate, Math.max(1, iNrIdle)) * best);
-            	iAlterBound = false;
+            if (canCheckBound(solution)) {
+                if (iIter % 1000 == 0 && iBound > Math.max(best + 2.0, Math.pow(iUpperBoundRate, 1 + iNrIdle) * best)) {
+                	iBound = Math.max(best + 2.0, Math.pow(iUpperBoundRate, iNrIdle) * best);
+                	if (solution.getModel().getTotalValue(solution.getAssignment()) > iBound)
+                		solution.restoreBest();
+                }
+                if (iBound < Math.pow(iLowerBoundRate, 1 + iNrIdle) * best) {
+                    iNrIdle++;
+                    sLog.info(" -<["+iNrIdle+"]>- ");
+                    iBound = Math.max(best + 2.0, Math.pow(iUpperBoundRate, iNrIdle) * best);
+                    iAlterBound = iAlterBoundOnReheat;
+                    if (iNextHeuristicsOnReheat) return true;
+                }
+                if (iAlterBound) {
+                	iBound = Math.max(best + 2.0, Math.pow(iUpperBoundRate, Math.max(1, iNrIdle)) * best);
+                	//if (solution.getModel().getTotalValue(solution.getAssignment()) > iBound)
+                	//	solution.restoreBest();
+                	iAlterBound = false;
+                }
             }
             return false;
         }

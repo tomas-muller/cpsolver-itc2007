@@ -11,9 +11,12 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
-
 import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.InheritedAssignment;
 import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
+import org.cpsolver.ifs.solution.Solution;
+
 import net.sf.cpsolver.itc.ItcModel;
 
 /**
@@ -39,7 +42,7 @@ import net.sf.cpsolver.itc.ItcModel;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class CttModel extends ItcModel<CttLecture, CttPlacement> {
+public class CttModel extends ItcModel<CttLecture, CttPlacement> implements CanInheritContext<CttLecture, CttPlacement, AssignmentConstraintContext<CttLecture, CttPlacement>> {
     private static Logger sLog = Logger.getLogger(CttModel.class); 
     private String iName = null;
     private int iNrDays = 0;
@@ -345,6 +348,12 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
 		return new Penalties(assignment);
 	}
 	
+	@Override
+	public AssignmentConstraintContext<CttLecture, CttPlacement> inheritAssignmentContext(Assignment<CttLecture, CttPlacement> assignment,
+			AssignmentConstraintContext<CttLecture, CttPlacement> parentContext) {
+		return new Penalties(assignment, (Penalties)parentContext);
+	}
+	
     /**
      * Update penalty counters when a variable is unassigned 
      */
@@ -361,7 +370,6 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
         getPenalties(assignment).beforeAssigned(assignment, placement);
     }
 
-    
     private class Penalties implements AssignmentConstraintContext<CttLecture, CttPlacement> {
         private int iCompactPenalty = 0;
         private int iRoomPenalty = 0;
@@ -373,6 +381,13 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
 			iRoomPenalty = CttModel.this.getRoomPenalty(assignment, true);
 			iMinDaysPenalty = CttModel.this.getMinDaysPenalty(assignment, true);
 			iRoomCapPenalty = CttModel.this.getRoomCapPenalty(assignment, true);
+		}
+		
+		public Penalties(Assignment<CttLecture, CttPlacement> assignment, Penalties parent) {
+			iCompactPenalty = parent.getCompactPenalty();
+			iRoomPenalty = parent.getRoomPenalty();
+			iMinDaysPenalty = parent.getMinDaysPenalty();
+			iRoomCapPenalty = parent.getRoomCapPenalty();
 		}
 		
 		@Override
@@ -408,9 +423,14 @@ public class CttModel extends ItcModel<CttLecture, CttPlacement> {
 		public int getRoomCapPenalty() { return iRoomCapPenalty; }
     }
 
-
 	@Override
 	public Assignment<CttLecture, CttPlacement> createAssignment(int index, Assignment<CttLecture, CttPlacement> assignment) {
 		return new CttAssignment(this, index, assignment);
 	}
+
+	@Override
+    public InheritedAssignment<CttLecture, CttPlacement> createInheritedAssignment(Solution<CttLecture, CttPlacement> solution, int index) {
+        return new CttInheritedAssignment(solution, index);
+    }
+
 }

@@ -16,7 +16,6 @@ import org.cpsolver.ifs.solution.Solution;
 import org.cpsolver.ifs.solver.Solver;
 import org.cpsolver.ifs.util.DataProperties;
 
-import net.sf.cpsolver.itc.ItcModel;
 import net.sf.cpsolver.itc.heuristics.search.ItcHillClimber;
 import net.sf.cpsolver.itc.heuristics.search.ItcTabuSearch;
 import net.sf.cpsolver.itc.heuristics.search.ItcGreatDeluge;
@@ -118,27 +117,30 @@ public class ItcNeighbourSelection<V extends Variable<V, T>, T extends Value<V, 
     /** Neighbour selection  -- based on the phase, construction strategy is used first,
      * than it iterates between two or three given neighbour selections*/
     public Neighbour<V,T> selectNeighbour(Solution<V,T> solution) {
-        Neighbour<V,T> n = null;
+    	if (!solution.isComplete() && solution.getModel().getBestUnassignedVariables() == 0)
+    		return iConstruct.selectNeighbour(solution);
+        
+    	Neighbour<V,T> n = null;
         Phase phase = getContext(solution.getAssignment());
         switch (phase.getPhase()) {
             case 0 :
                 n = iConstruct.selectNeighbour(solution);
                 if (n!=null) return n;
-                phase.incPhase(solution, "first");
+                phase.setPhase(1, solution, "one");
             case 1 :
                 n = iFirst.selectNeighbour(solution);
                 if (n!=null) return n;
-                phase.incPhase(solution, "second");
+                phase.setPhase(2, solution, "two");
             case 2 :
                 n = iSecond.selectNeighbour(solution);
                 if (n!=null) return n;
-                phase.incPhase(solution, "third");
+                phase.setPhase(3, solution, "three");
             case 3 :
                 n = (iThird==null?null:iThird.selectNeighbour(solution));
                 if (n!=null) return n;
-                phase.incPhase(solution, "first");
+                phase.setPhase(4, solution, "one");
             default :
-            	phase.setPhase(1);
+            	phase.setPhase(1, solution, "one");
                 return selectNeighbour(solution);
         }
     }
@@ -151,17 +153,13 @@ public class ItcNeighbourSelection<V extends Variable<V, T>, T extends Value<V, 
 		}
 		
 		/** Change phase, i.e., what selector is to be used next */
-		public void incPhase(Solution<V,T> solution, String name) {
-	        iPhase ++;
+		public synchronized void setPhase(int phase, Solution<V,T> solution, String name) {
+			if (iPhase == phase) return;
+	        iPhase = phase;
 	        if (sLog.isInfoEnabled()) {
-	            ItcModel<V,T> m = (ItcModel<V,T>)solution.getModel();
-	            sLog.info("**CURR["+solution.getIteration()+"]** P:"+Math.round(m.getTotalValue(solution.getAssignment()))+" ("+m.csvLine(solution.getAssignment())+")");
+	            sLog.info("**CURR["+solution.getIteration()+"]** " + solution);
 	            sLog.info("Phase "+name);
 	        }
-		}
-		
-		public void setPhase(int phase) {
-			iPhase = phase;
 		}
     }
 

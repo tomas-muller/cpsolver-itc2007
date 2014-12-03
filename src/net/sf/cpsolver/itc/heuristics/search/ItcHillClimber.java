@@ -12,6 +12,8 @@ import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentContext;
 import org.cpsolver.ifs.assignment.context.NeighbourSelectionWithContext;
 import org.cpsolver.ifs.heuristics.NeighbourSelection;
+import org.cpsolver.ifs.model.LazyNeighbour;
+import org.cpsolver.ifs.model.LazyNeighbour.LazyNeighbourAcceptanceCriterion;
 import org.cpsolver.ifs.model.Model;
 import org.cpsolver.ifs.model.Neighbour;
 import org.cpsolver.ifs.model.Value;
@@ -21,8 +23,7 @@ import org.cpsolver.ifs.solution.SolutionListener;
 import org.cpsolver.ifs.solver.Solver;
 import org.cpsolver.ifs.util.DataProperties;
 import org.cpsolver.ifs.util.ToolBox;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour;
-import net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion;
+
 import net.sf.cpsolver.itc.heuristics.neighbour.selection.ItcNotConflictingMove;
 import net.sf.cpsolver.itc.heuristics.neighbour.selection.ItcSwapMove;
 
@@ -161,8 +162,8 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> ext
             }
             Neighbour<V,T> n = ns.selectNeighbour(solution);
             if (n!=null) {
-                if (n instanceof ItcLazyNeighbour) {
-                    ((ItcLazyNeighbour<V,T>)n).setAcceptanceCriterion(this);
+                if (n instanceof LazyNeighbour) {
+                    ((LazyNeighbour<V,T>)n).setAcceptanceCriterion(this);
                     return n;
                 } else if (n.value(solution.getAssignment())<=0.0) return n;
             }
@@ -172,7 +173,7 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> ext
     }
     
     /** Implementation of {@link net.sf.cpsolver.itc.heuristics.neighbour.ItcLazyNeighbour.LazyNeighbourAcceptanceCriterion} interface */
-    public boolean accept(Assignment<V,T> assignment, ItcLazyNeighbour<V,T> neighbour, double value) {
+    public boolean accept(Assignment<V,T> assignment, LazyNeighbour<V,T> neighbour, double value) {
         return value<=0;
     }
 
@@ -297,7 +298,7 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> ext
         private int iLastImprovingIter = 0;
         private int iIter = 0;
         private long iT0 = -1;
-
+        
         public void reset() {
             iIter = 0;
             iLastImprovingIter = 0;
@@ -308,7 +309,7 @@ public class ItcHillClimber<V extends Variable<V, T>, T extends Value<V, T>> ext
             if (iT0 < 0) iT0 = System.currentTimeMillis();
         }
         
-        protected boolean incIter(Solution<V, T> solution) {
+        protected synchronized boolean incIter(Solution<V, T> solution) {
             iIter ++;
             if (iIter % 10000 == 0) {
                 if (sInfo) {

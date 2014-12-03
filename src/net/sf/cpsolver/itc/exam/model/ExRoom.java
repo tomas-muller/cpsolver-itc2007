@@ -1,11 +1,15 @@
 package net.sf.cpsolver.itc.exam.model;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
 import org.cpsolver.ifs.assignment.context.ConstraintWithContext;
 import org.cpsolver.ifs.model.ConstraintListener;
 
@@ -33,7 +37,7 @@ import org.cpsolver.ifs.model.ConstraintListener;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class ExRoom extends ConstraintWithContext<ExExam, ExPlacement, ExRoom.Context> {
+public class ExRoom extends ConstraintWithContext<ExExam, ExPlacement, ExRoom.Context> implements CanInheritContext<ExExam, ExPlacement, ExRoom.Context> {
     private int iSize;
     private int iPenalty;
     
@@ -76,6 +80,12 @@ public class ExRoom extends ConstraintWithContext<ExExam, ExPlacement, ExRoom.Co
     	Context context = getContext(assignment);
         if (p.getRoom().equals(this)) {
             ExExam ex = p.variable();
+            /*
+            if (ex.getStudents().size() > getSize())  {
+            	conflicts.add(p);
+            	return;
+            }
+            */
             if (ex.isRoomExclusive() || context.isExclusive(p.getPeriodIndex())) {
                 conflicts.addAll(context.getExams(p.getPeriodIndex()));
                 return;
@@ -99,6 +109,7 @@ public class ExRoom extends ConstraintWithContext<ExExam, ExPlacement, ExRoom.Co
                         if (adeptDiff==0) break;
                     } 
                 }
+                if (adept == null) break;
                 adepts.remove(adept);
                 rem += ((ExExam)adept.variable()).getStudents().size();
                 conflicts.add(adept);
@@ -112,6 +123,7 @@ public class ExRoom extends ConstraintWithContext<ExExam, ExPlacement, ExRoom.Co
     public boolean inConflict(Assignment<ExExam, ExPlacement> assignment, ExPlacement p) {
         if (!p.getRoom().equals(this)) return false;
         ExExam ex = p.variable();
+        // if (ex.getStudents().size() > getSize()) return true;
         Context context = getContext(assignment);
         return (
                 context.isExclusive(p.getPeriodIndex()) || 
@@ -278,23 +290,39 @@ public class ExRoom extends ConstraintWithContext<ExExam, ExPlacement, ExRoom.Co
     			if (value.getRoom().equals(ExRoom.this))
     				assigned(assignment, value);
     	}
+    	
+    	@SuppressWarnings("unchecked")
+		private Context(ExModel m, Assignment<ExExam, ExPlacement> assignment, Context parent) {
+            synchronized (parent.iExams) {
+                iUsedSpace = Arrays.copyOf(parent.iUsedSpace, m.getNrPeriods());
+                iExclusive = Arrays.copyOf(parent.iExclusive, m.getNrPeriods());
+                iExams = new HashSet[m.getNrPeriods()];
+                for (int i = 0; i < m.getNrPeriods(); i++) {
+                    iExams[i] = new HashSet<ExPlacement>(parent.iExams[i]);
+                }
+			}
+    	}
 
 		@Override
 		public void assigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement p) {
-	        iExams[p.getPeriodIndex()].add(p);
-	        iUsedSpace[p.getPeriodIndex()] += p.variable().getStudents().size();
-	        iExclusive[p.getPeriodIndex()] = p.variable().isRoomExclusive();
+			synchronized (iExams) {
+				iExams[p.getPeriodIndex()].add(p);
+				iUsedSpace[p.getPeriodIndex()] += p.variable().getStudents().size();
+				iExclusive[p.getPeriodIndex()] = p.variable().isRoomExclusive();
+			}
 		}
 
 		@Override
 		public void unassigned(Assignment<ExExam, ExPlacement> assignment, ExPlacement p) {
-	        iExams[p.getPeriodIndex()].remove(p);
-	        iUsedSpace[p.getPeriodIndex()] -= p.variable().getStudents().size();
-	        iExclusive[p.getPeriodIndex()] = false;
+			synchronized (iExams) {
+				iExams[p.getPeriodIndex()].remove(p);
+				iUsedSpace[p.getPeriodIndex()] -= p.variable().getStudents().size();
+				iExclusive[p.getPeriodIndex()] = false;
+			}
 		}
 		
 		public int getUsedSpace(int period) {
-			return iUsedSpace[period];
+			return Math.max(0, iUsedSpace[period]);
 		}
 
 		public boolean isExclusive(int period) {
@@ -304,11 +332,23 @@ public class ExRoom extends ConstraintWithContext<ExExam, ExPlacement, ExRoom.Co
 		public Set<ExPlacement> getExams(int period) {
 			return iExams[period];
 		}
-}
+		
+		public List<ExExam> getExaminations(int period) {
+			List<ExExam> exams = new ArrayList<ExExam>(iExams[period].size());
+			for (ExPlacement p: getExams(period))
+				exams.add(p.variable());
+			return exams;
+		}
+    }
 
 	@Override
 	public Context createAssignmentContext(Assignment<ExExam, ExPlacement> assignment) {
 		return new Context((ExModel)getModel(), assignment);
+	}
+
+	@Override
+	public Context inheritAssignmentContext(Assignment<ExExam, ExPlacement> assignment, Context parentContext) {
+		return new Context((ExModel)getModel(), assignment, parentContext);
 	}
     
 }

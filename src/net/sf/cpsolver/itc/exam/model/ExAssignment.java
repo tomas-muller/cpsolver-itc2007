@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.cpsolver.ifs.assignment.Assignment;
 import org.cpsolver.ifs.assignment.AssignmentAbstract;
+import org.cpsolver.ifs.assignment.context.AssignmentContextHolder;
 import org.cpsolver.ifs.assignment.context.DefaultParallelAssignmentContextHolder;
 import org.cpsolver.ifs.model.BinaryConstraint;
 import org.cpsolver.ifs.model.Model;
@@ -35,17 +36,28 @@ import org.cpsolver.ifs.model.Model;
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
 public class ExAssignment extends AssignmentAbstract<ExExam, ExPlacement> {
-	private ExModel iModel;
-	private int iIndex;
-	private int iNrAssigned = 0;
+	protected int iIndex;
+	protected int iNrAssigned = 0;
+	protected ExModel iModel;
+	protected ExPlacement[] iAssignment = null;
+	protected ExAssignment iParent = null;
 	
 	public ExAssignment(ExModel model, int index, Assignment<ExExam, ExPlacement> assignment) {
 		super(new DefaultParallelAssignmentContextHolder<ExExam, ExPlacement>(index));
 		iIndex = index;
 		iModel = model;
-		if (assignment != null)
-            for (ExPlacement value: assignment.assignedValues())
-                setValueInternal(0, value.variable(), value);
+		iParent = (ExAssignment) assignment;
+		if (iParent == null) {
+			iAssignment = new ExPlacement[model.variables().size()];
+			iNrAssigned = 0;
+		} else {
+			iAssignment = Arrays.copyOf(((ExAssignment)iParent).toArray(), model.variables().size());
+			iNrAssigned = iParent.nrAssignedVariables();
+		}
+	}
+	
+	protected ExAssignment(AssignmentContextHolder<ExExam, ExPlacement> contextHolder) {
+		super(contextHolder);
 	}
 	
 	@Override
@@ -119,20 +131,24 @@ public class ExAssignment extends AssignmentAbstract<ExExam, ExPlacement> {
     }
     
 	@Override
-    @SuppressWarnings("deprecation")
     protected ExPlacement getValueInternal(ExExam variable) {
+		return iAssignment[variable.getIndex()];
+		/*
     	if (iIndex == 1)
     		return variable.getAssignment();
         return getAssignments(variable)[iIndex];
+        */
     }
     
 	@Override
-    @SuppressWarnings("deprecation")
     protected void setValueInternal(long iteration, ExExam variable, ExPlacement value) {
+		iAssignment[variable.getIndex()] = value;
+		/*
     	if (iIndex == 1)
     		variable.setAssignment(value);
     	else
     		getAssignments(variable)[iIndex] = value;
+    	*/
         if (value == null)
         	iNrAssigned --;
         else
@@ -148,4 +164,12 @@ public class ExAssignment extends AssignmentAbstract<ExExam, ExPlacement> {
     public int nrAssignedVariables() {
         return iNrAssigned;
     }
+    
+    public ExPlacement[] toArray() {
+    	return iAssignment;
+    }
+
+	public Assignment<ExExam, ExPlacement> getParentAssignment() {
+		return iParent;
+	}
 }

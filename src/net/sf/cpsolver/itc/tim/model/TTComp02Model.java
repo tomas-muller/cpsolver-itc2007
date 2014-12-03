@@ -7,12 +7,16 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.cpsolver.ifs.assignment.Assignment;
+import org.cpsolver.ifs.assignment.InheritedAssignment;
 import org.cpsolver.ifs.assignment.context.AssignmentConstraintContext;
+import org.cpsolver.ifs.assignment.context.CanInheritContext;
+import org.cpsolver.ifs.solution.Solution;
 
 import net.sf.cpsolver.itc.ItcModel;
 
@@ -46,7 +50,7 @@ import net.sf.cpsolver.itc.ItcModel;
  * License along with this library; if not see
  * <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.
  */
-public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
+public class TTComp02Model extends ItcModel<TimEvent, TimLocation> implements CanInheritContext<TimEvent, TimLocation, TTComp02Model.TTComp02Context>{
     /** Room constraints */
     protected List<TimRoom> iRooms = null;
     /** Student constraints */
@@ -259,6 +263,10 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
     				assigned(assignment, location);
     		}
     	}
+    	
+    	public TTComp02Context(Assignment<TimEvent, TimLocation> assignment, TTComp02Context parent) {
+    		iScore = Arrays.copyOf(parent.iScore, 3);
+    	}
 
         /**
          * Update counters on assignment of an event
@@ -325,5 +333,15 @@ public class TTComp02Model extends ItcModel<TimEvent, TimLocation> {
 	@Override
 	public Assignment<TimEvent, TimLocation> createAssignment(int index, Assignment<TimEvent, TimLocation> assignment) {
 		return new TimAssignment(this, index, assignment);
+	}
+	
+	@Override
+    public InheritedAssignment<TimEvent, TimLocation> createInheritedAssignment(Solution<TimEvent, TimLocation> solution, int index) {
+        return new TimInheritedAssignment(solution, index);
+    }
+
+	@Override
+	public TTComp02Context inheritAssignmentContext(Assignment<TimEvent, TimLocation> assignment, TTComp02Context parentContext) {
+		return new TTComp02Context(assignment, parentContext);
 	}
 }
